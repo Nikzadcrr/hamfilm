@@ -2,13 +2,12 @@ package com.hamfilm.app.data.model
 
 import com.google.gson.annotations.SerializedName
 
-// ---------- احراز هویت ----------
+// ---------- احراز هویت (بک‌اند: نام کاربری + رمز — بدون ایمیل) ----------
 data class User(
     val id: String = "",
     val name: String = "",
-    val email: String? = null,
-    val avatar: String = "🎬",
-    @SerializedName("created_at") val createdAt: Long = 0L
+    @SerializedName("created_at") val createdAt: Long = 0,
+    @SerializedName("last_seen") val lastSeen: Long? = null
 )
 
 data class AuthResponse(
@@ -16,8 +15,8 @@ data class AuthResponse(
     val user: User? = null
 )
 
-data class RegisterRequest(val name: String, val email: String, val password: String)
-data class LoginRequest(val email: String, val password: String)
+data class RegisterRequest(val name: String, val pass: String)
+data class LoginRequest(val name: String, val pass: String)
 
 // ---------- تنظیمات عمومی ----------
 data class PublicSettings(
@@ -26,15 +25,15 @@ data class PublicSettings(
     val announcement: String = "",
     val announcementActive: Boolean = false,
     val welcomeMessage: String = "خوش آمدید!",
-    val subscriptionsEnabled: Boolean = false
+    val subscriptionsEnabled: Boolean = false,
+    @SerializedName("featuredMovies") val featuredMovies: List<String> = emptyList()
 )
 
 // ---------- فیلم‌ها ----------
 data class DownloadLink(
     val label: String = "",
     val url: String = "",
-    val quality: String = "",
-    val size: String = ""
+    val kind: String = ""
 )
 
 data class Movie(
@@ -42,7 +41,7 @@ data class Movie(
     val title: String = "",
     @SerializedName("title_en") val titleEn: String = "",
     @SerializedName("title_fa") val titleFa: String = "",
-    val year: Int = 0,
+    val year: Int? = null,
     val genres: List<String> = emptyList(),
     val country: String = "",
     val language: String = "",
@@ -55,19 +54,28 @@ data class Movie(
     val description: String = "",
     @SerializedName("cover_url") val coverUrl: String = "",
     @SerializedName("source_url") val sourceUrl: String = "",
-    @SerializedName("download_links") val downloadLinks: List<DownloadLink> = emptyList(),
-    @SerializedName("trailer_url") val trailerUrl: String = "",
-    val featured: Boolean = false
+    @SerializedName("download_links") val downloadLinks: List<DownloadLink> = emptyList()
 ) {
     val displayTitle: String get() = titleFa.ifBlank { title }
+    val displayYear: String get() = year?.let { it.toString() } ?: ""
 }
 
-data class MoviesResponse(val movies: List<Movie> = emptyList())
+data class MoviesResponse(
+    val total: Int = 0,
+    val page: Int = 1,
+    val pages: Int = 1,
+    val movies: List<Movie> = emptyList()
+)
+
 data class FeaturedResponse(val featured: Boolean = false, val movies: List<Movie> = emptyList())
+
+/** جزئیات فیلم — بک‌اند: { movie: {...} } */
+data class MovieResponse(val movie: Movie? = null)
+
 data class Genre(val name: String = "", val count: Int = 0)
 data class GenresResponse(val genres: List<Genre> = emptyList())
 
-// ---------- پلن‌ها ----------
+// ---------- پلن‌ها و اشتراک ----------
 data class Plan(
     val id: String = "",
     val name: String = "",
@@ -81,15 +89,22 @@ data class Plan(
 )
 
 data class PlansResponse(val enabled: Boolean = false, val plans: List<Plan> = emptyList())
-data class SubscriptionStatus(
-    val active: Boolean = false,
-    @SerializedName("plan_name") val planName: String = "",
-    @SerializedName("expires_at") val expiresAt: Long = 0
+
+/** بک‌اند: { subscription: { ends_at, plan_id } | null } */
+data class SubscriptionInfo(
+    @SerializedName("ends_at") val endsAt: Long = 0,
+    @SerializedName("plan_id") val planId: String = ""
 )
+
+data class SubscriptionResponse(val subscription: SubscriptionInfo? = null)
+
 data class CheckoutRequest(@SerializedName("plan_id") val planId: String = "")
+
+/** بک‌اند: { redirectUrl, sandbox?, amount_toman } */
 data class CheckoutResponse(
-    @SerializedName("payment_url") val paymentUrl: String = "",
-    @SerializedName("order_id") val orderId: String = ""
+    @SerializedName("redirectUrl") val redirectUrl: String = "",
+    val sandbox: Boolean = false,
+    @SerializedName("amount_toman") val amountToman: Long = 0
 )
 
 // ---------- اتاق‌ها ----------
@@ -97,20 +112,24 @@ data class CreateRoomRequest(
     val name: String = "اتاق من",
     val videoUrl: String = "",
     val password: String = "",
-    val avatar: String = "🎬"
+    val avatar: String = ""
 )
 
+/** بک‌اند: { id, name, videoUrl, hasPassword, inviteUrl } */
 data class RoomInfo(
     val id: String = "",
-    val code: String = "",
     val name: String = "",
-    val password: String = "",
-    val hostId: String = "",
-    val hostName: String = "",
-    val locked: Boolean = false,
-    val memberCount: Int = 0,
     val videoUrl: String = "",
-    val createdAt: Long = 0
+    val hasPassword: Boolean = false,
+    val inviteUrl: String = ""
+)
+
+// ---------- گزارش ----------
+data class ReportRequest(
+    @SerializedName("roomId") val roomId: String = "",
+    @SerializedName("msgId") val msgId: String = "",
+    @SerializedName("msgText") val msgText: String = "",
+    val reason: String = ""
 )
 
 // ---------- تیکت پشتیبانی ----------
@@ -119,27 +138,39 @@ data class Ticket(
     val subject: String = "",
     val status: String = "open",
     @SerializedName("created_at") val createdAt: Long = 0,
-    @SerializedName("last_reply_at") val lastReplyAt: Long = 0
+    @SerializedName("updated_at") val updatedAt: Long = 0
 )
 
 data class TicketsResponse(val tickets: List<Ticket> = emptyList())
 
-data class TicketReply(
+/** پیام تیکت — بک‌اند: { id, sender(user|admin|bot), author, text, ts } */
+data class TicketMsg(
     val id: String = "",
+    val sender: String = "user",
     val author: String = "",
-    val body: String = "",
-    @SerializedName("created_at") val createdAt: Long = 0
-)
+    val text: String = "",
+    val ts: Long = 0
+) {
+    val isMine: Boolean get() = sender == "user"
+    val isBot: Boolean get() = sender == "bot"
+}
 
 data class TicketDetail(
     val id: String = "",
     val subject: String = "",
     val status: String = "open",
-    val replies: List<TicketReply> = emptyList()
+    val messages: List<TicketMsg> = emptyList()
 )
 
-data class CreateTicketRequest(val subject: String, val body: String)
-data class ReplyTicketRequest(val body: String)
+data class TicketMessagesResponse(val messages: List<TicketMsg> = emptyList())
 
-// ---------- خطا ----------
-data class ErrorBody(val error: String? = null)
+/** بک‌اند ساخت تیکت: { subject, message } → { ok, id } */
+data class CreateTicketRequest(
+    val subject: String,
+    val message: String
+)
+
+data class TicketCreateResponse(val ok: Boolean = false, val id: String = "")
+
+/** بک‌اند پاسخ: POST /api/support/tickets/{id}/messages با { text } */
+data class ReplyTicketRequest(val text: String)

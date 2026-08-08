@@ -14,14 +14,15 @@ class AppRepository(private val api: ApiService = ApiClient.service) {
         return Exception(msg ?: fallback)
     }
 
-    suspend fun register(name: String, email: String, password: String): AuthResponse {
-        val r = api.register(RegisterRequest(name, email, password))
+    // ---------- احراز هویت ----------
+    suspend fun register(name: String, pass: String): AuthResponse {
+        val r = api.register(RegisterRequest(name, pass))
         if (!r.isSuccessful || r.body() == null) throw err(r, "ثبت‌نام ناموفق بود")
         return r.body()!!
     }
 
-    suspend fun login(email: String, password: String): AuthResponse {
-        val r = api.login(LoginRequest(email, password))
+    suspend fun login(name: String, pass: String): AuthResponse {
+        val r = api.login(LoginRequest(name, pass))
         if (!r.isSuccessful || r.body() == null) throw err(r, "ورود ناموفق بود")
         return r.body()!!
     }
@@ -35,20 +36,22 @@ class AppRepository(private val api: ApiService = ApiClient.service) {
         runCatching { api.logout() }
     }
 
+    // ---------- تنظیمات ----------
     suspend fun settings(): PublicSettings {
         val r = api.publicSettings()
         return if (r.isSuccessful) r.body() ?: PublicSettings() else PublicSettings()
     }
 
+    // ---------- فیلم‌ها ----------
     suspend fun featured(): List<Movie> {
         val r = api.featuredMovies()
         return if (r.isSuccessful) r.body()?.movies ?: emptyList() else emptyList()
     }
 
-    suspend fun movies(page: Int, genre: String?, query: String?): List<Movie> {
-        val r = api.movies(page, genre, query)
+    suspend fun movies(page: Int, genre: String?, query: String?): MoviesResponse {
+        val r = api.movies(page, 24, genre, query)
         if (!r.isSuccessful) throw err(r, "دریافت فیلم‌ها ناموفق بود")
-        return r.body()?.movies ?: emptyList()
+        return r.body() ?: MoviesResponse()
     }
 
     suspend fun genres(): List<Genre> {
@@ -56,18 +59,19 @@ class AppRepository(private val api: ApiService = ApiClient.service) {
         return if (r.isSuccessful) r.body()?.genres ?: emptyList() else emptyList()
     }
 
-    suspend fun movie(slug: String): Movie {
+    suspend fun movie(slug: String): Movie? {
         val r = api.movie(slug)
         if (!r.isSuccessful) throw err(r, "دریافت فیلم ناموفق بود")
-        return r.body() ?: Movie(slug = slug)
+        return r.body()?.movie
     }
 
+    // ---------- پلن‌ها و اشتراک ----------
     suspend fun plans(): PlansResponse {
         val r = api.plans()
         return if (r.isSuccessful) r.body() ?: PlansResponse() else PlansResponse()
     }
 
-    suspend fun mySubscription(): SubscriptionStatus? {
+    suspend fun mySubscription(): SubscriptionResponse? {
         val r = api.mySubscription()
         return if (r.isSuccessful) r.body() else null
     }
@@ -78,6 +82,7 @@ class AppRepository(private val api: ApiService = ApiClient.service) {
         return r.body() ?: CheckoutResponse()
     }
 
+    // ---------- اتاق‌ها ----------
     suspend fun createRoom(body: CreateRoomRequest): RoomInfo {
         val r = api.createRoom(body)
         if (!r.isSuccessful || r.body() == null) throw err(r, "ساخت اتاق ناموفق بود")
@@ -89,30 +94,32 @@ class AppRepository(private val api: ApiService = ApiClient.service) {
         return if (r.isSuccessful) r.body() else null
     }
 
-    suspend fun report(code: String, reason: String) {
-        runCatching { api.report(mapOf("roomCode" to code, "reason" to reason)) }
+    // ---------- گزارش ----------
+    suspend fun report(roomId: String, msgId: String, msgText: String, reason: String) {
+        runCatching { api.report(ReportRequest(roomId, msgId, msgText, reason)) }
     }
 
+    // ---------- تیکت‌ها ----------
     suspend fun tickets(): List<Ticket> {
         val r = api.tickets()
         return if (r.isSuccessful) r.body()?.tickets ?: emptyList() else emptyList()
     }
 
-    suspend fun createTicket(subject: String, body: String): TicketDetail {
-        val r = api.createTicket(CreateTicketRequest(subject, body))
-        if (!r.isSuccessful) throw err(r, "ارسال تیکت ناموفق بود")
-        return r.body() ?: TicketDetail()
+    /** ساخت تیکت → برمی‌گرداند id جدید */
+    suspend fun createTicket(subject: String, message: String): String {
+        val r = api.createTicket(CreateTicketRequest(subject, message))
+        if (!r.isSuccessful || r.body() == null) throw err(r, "ارسال تیکت ناموفق بود")
+        return r.body()!!.id
     }
 
-    suspend fun ticketDetail(id: String): TicketDetail {
+    suspend fun ticketMessages(id: String): List<TicketMsg> {
         val r = api.ticketDetail(id)
         if (!r.isSuccessful) throw err(r, "دریافت تیکت ناموفق بود")
-        return r.body() ?: TicketDetail()
+        return r.body()?.messages ?: emptyList()
     }
 
-    suspend fun replyTicket(id: String, body: String): TicketDetail {
-        val r = api.replyTicket(id, ReplyTicketRequest(body))
+    suspend fun replyTicket(id: String, text: String) {
+        val r = api.replyTicket(id, ReplyTicketRequest(text))
         if (!r.isSuccessful) throw err(r, "ارسال پاسخ ناموفق بود")
-        return r.body() ?: TicketDetail()
     }
 }

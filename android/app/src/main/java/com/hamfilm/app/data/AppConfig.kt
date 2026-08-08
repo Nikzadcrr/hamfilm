@@ -44,7 +44,6 @@ object TokenStore {
     private const val KEY_TOKEN = "jwt"
     private const val KEY_NAME = "name"
     private const val KEY_AVATAR = "avatar"
-    private const val KEY_EMAIL = "email"
     private const val KEY_ONBOARDED = "onboarded"
 
     private lateinit var prefs: SharedPreferences
@@ -62,12 +61,8 @@ object TokenStore {
         set(v) = prefs.edit().putString(KEY_NAME, v).apply()
 
     var avatar: String
-        get() = prefs.getString(KEY_AVATAR, "🎬") ?: "🎬"
+        get() = prefs.getString(KEY_AVATAR, "a1") ?: "a1"
         set(v) = prefs.edit().putString(KEY_AVATAR, v).apply()
-
-    var email: String
-        get() = prefs.getString(KEY_EMAIL, "") ?: ""
-        set(v) = prefs.edit().putString(KEY_EMAIL, v).apply()
 
     var onboarded: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDED, false)

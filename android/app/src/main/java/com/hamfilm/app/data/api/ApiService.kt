@@ -6,7 +6,7 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    // ---------- احراز هویت ----------
+    // ---------- احراز هویت (نام کاربری + رمز) ----------
     @POST("api/auth/register")
     suspend fun register(@Body body: RegisterRequest): Response<AuthResponse>
 
@@ -27,8 +27,10 @@ interface ApiService {
     @GET("api/movies")
     suspend fun movies(
         @Query("page") page: Int = 1,
+        @Query("per_page") perPage: Int = 24,
         @Query("genre") genre: String? = null,
-        @Query("q") q: String? = null
+        @Query("q") q: String? = null,
+        @Query("sort") sort: String? = null
     ): Response<MoviesResponse>
 
     @GET("api/movies/featured")
@@ -38,14 +40,14 @@ interface ApiService {
     suspend fun genres(): Response<GenresResponse>
 
     @GET("api/movies/{slug}")
-    suspend fun movie(@Path("slug") slug: String): Response<Movie>
+    suspend fun movie(@Path("slug") slug: String): Response<MovieResponse>
 
     // ---------- پلن‌ها و اشتراک ----------
     @GET("api/plans")
     suspend fun plans(): Response<PlansResponse>
 
     @GET("api/subscriptions/me")
-    suspend fun mySubscription(): Response<SubscriptionStatus>
+    suspend fun mySubscription(): Response<SubscriptionResponse>
 
     @POST("api/subscriptions/checkout")
     suspend fun checkout(@Body body: CheckoutRequest): Response<CheckoutResponse>
@@ -57,19 +59,20 @@ interface ApiService {
     @GET("api/rooms/{code}")
     suspend fun roomInfo(@Path("code") code: String): Response<RoomInfo>
 
+    // ---------- گزارش ----------
     @POST("api/reports")
-    suspend fun report(@Body body: Map<String, String>): Response<Unit>
+    suspend fun report(@Body body: ReportRequest): Response<Unit>
 
-    // ---------- تیکت‌ها ----------
+    // ---------- تیکت‌ها (بک‌اند: messages به‌جای replies) ----------
     @GET("api/support/tickets")
     suspend fun tickets(): Response<TicketsResponse>
 
     @POST("api/support/tickets")
-    suspend fun createTicket(@Body body: CreateTicketRequest): Response<TicketDetail>
+    suspend fun createTicket(@Body body: CreateTicketRequest): Response<TicketCreateResponse>
 
-    @GET("api/support/tickets/{id}")
-    suspend fun ticketDetail(@Path("id") id: String): Response<TicketDetail>
+    @GET("api/support/tickets/{id}/messages")
+    suspend fun ticketDetail(@Path("id") id: String): Response<TicketMessagesResponse>
 
-    @POST("api/support/tickets/{id}/reply")
-    suspend fun replyTicket(@Path("id") id: String, @Body body: ReplyTicketRequest): Response<TicketDetail>
+    @POST("api/support/tickets/{id}/messages")
+    suspend fun replyTicket(@Path("id") id: String, @Body body: ReplyTicketRequest): Response<Unit>
 }
