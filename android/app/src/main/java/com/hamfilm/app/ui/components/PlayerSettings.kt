@@ -81,9 +81,9 @@ fun PlayerSettingsSheet(
                     color = BrandTextMuted
                 )
             } else {
-                val prefLang = player?.trackSelectionParameters?.preferredAudioLanguage
+                var selectedLang by remember { mutableStateOf<String?>(null) }
                 audioLangs.forEach { lang ->
-                    val selected = prefLang == lang
+                    val selected = selectedLang == lang
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -91,6 +91,7 @@ fun PlayerSettingsSheet(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (selected) BrandCyan.copy(alpha = 0.15f) else Color.Transparent)
                             .clickable {
+                                selectedLang = lang
                                 player?.trackSelectionParameters = player.trackSelectionParameters
                                     .buildUpon()
                                     .setPreferredAudioLanguage(lang)
