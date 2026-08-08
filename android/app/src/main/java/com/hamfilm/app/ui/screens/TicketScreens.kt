@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Send
 import com.hamfilm.app.data.TokenStore
+import com.hamfilm.app.data.model.TicketDetail
 import com.hamfilm.app.data.api.AppRepository
 import com.hamfilm.app.data.model.Ticket
 import com.hamfilm.app.ui.components.*

@@ -136,6 +136,7 @@ fun JoinRoomScreen(nav: NavHostController) {
     var name by remember { mutableStateOf(TokenStore.name.ifBlank { "مهمان" }) }
     var avatar by remember { mutableStateOf(TokenStore.avatar.ifBlank { "a1" }) }
     var error by remember { mutableStateOf<String?>(null) }
+    var checking by remember { mutableStateOf(false) }
 
     GradientBackground(Modifier.fillMaxSize()) {
         Column(

@@ -35,6 +35,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -533,7 +534,7 @@ private fun ChatPanel(
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            items(messages, key = { it.id }) { m -> MessageRow(m, isMe = m.userId == myId) }
+            items(messages, key = { it.id }) { m -> MessageRow(m, isMe = m.senderId.isNotBlank() && m.senderId == myId) }
             if (typing.isNotEmpty()) {
                 item { Text("✍️ ${typing.size} نفر در حال تایپ…", fontSize = 12.sp, color = BrandTextMuted) }
             }
@@ -646,7 +647,10 @@ private fun RoomOptionsSheet(
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (active) BrandGradientSoft else BrandCardLight)
+                            .background(
+                                if (active) Brush.linearGradient(listOf(BrandPurple.copy(alpha = 0.35f), BrandCyan.copy(alpha = 0.25f)))
+                                else androidx.compose.ui.graphics.SolidColor(BrandCardLight)
+                            )
                             .clickable { onSpeed(r) }
                             .padding(horizontal = 12.dp, vertical = 7.dp)
                     ) {

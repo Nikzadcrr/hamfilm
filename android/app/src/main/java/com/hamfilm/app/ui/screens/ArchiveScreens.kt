@@ -414,23 +414,26 @@ private fun DownloadRow(link: com.hamfilm.app.data.model.DownloadLink, index: In
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // استخراج کیفیت و حجم از برچسب لینک (بک‌اند: label شامل 1080p و حجم است)
+            val quality = Regex("(\\d{3,4}p|4K|HD)").find(link.label)?.value ?: "HD"
+            val size = Regex("([\\d.]+\\s*(GB|MB))").find(link.label)?.value ?: ""
             // آیکون کیفیت
             Box(
                 Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
-                        if (link.quality.contains("4K") || link.quality.contains("1080"))
+                        if (quality.contains("4K") || quality.contains("1080"))
                             BrandGreen.copy(alpha = 0.15f)
                         else BrandCyan.copy(alpha = 0.13f)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    link.quality.ifBlank { "HD" },
+                    quality,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (link.quality.contains("4K") || link.quality.contains("1080")) BrandGreen else BrandCyan
+                    color = if (quality.contains("4K") || quality.contains("1080")) BrandGreen else BrandCyan
                 )
             }
             Spacer(Modifier.width(12.dp))
@@ -440,8 +443,8 @@ private fun DownloadRow(link: com.hamfilm.app.data.model.DownloadLink, index: In
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.5.sp
                 )
-                if (link.size.isNotBlank()) {
-                    Text(link.size, fontSize = 11.sp, color = BrandTextMuted)
+                if (size.isNotBlank()) {
+                    Text(size, fontSize = 11.sp, color = BrandTextMuted)
                 }
             }
             Icon(Icons.Default.Download, "دانلود", tint = BrandCyan, modifier = Modifier.size(22.dp))

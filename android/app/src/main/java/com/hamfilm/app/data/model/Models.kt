@@ -174,3 +174,6 @@ data class TicketCreateResponse(val ok: Boolean = false, val id: String = "")
 
 /** بک‌اند پاسخ: POST /api/support/tickets/{id}/messages با { text } */
 data class ReplyTicketRequest(val text: String)
+
+/** بدنه خطا — بک‌اند: { error: "متن" } */
+data class ErrorBody(val error: String = "")
