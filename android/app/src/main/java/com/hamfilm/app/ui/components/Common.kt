@@ -4,9 +4,16 @@ import coil.compose.AsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -191,4 +198,79 @@ fun EmptyState(emoji: String, title: String, subtitle: String = "", modifier: Mo
             )
         }
     }
+}
+
+// ---------- برچسب بخش (بالای فیلدها) ----------
+@Composable
+fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        color = BrandTextMuted,
+        modifier = modifier.padding(bottom = 6.dp)
+    )
+}
+
+// ---------- دکمه گرد رنگی برای نوار بالای اتاق ----------
+@Composable
+fun TopBarIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    tint: Color,
+    bg: Color,
+    modifier: Modifier = Modifier,
+    badge: Int = 0,
+    onClick: () -> Unit
+) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(bg)
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(20.dp))
+        }
+        if (badge > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = (-6).dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFFF43F5E))
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    badge.toString(),
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// ---------- نقطه زنده چشمک‌زن ----------
+@Composable
+fun LiveDot(modifier: Modifier = Modifier) {
+    val infinite = rememberInfiniteTransition(label = "live")
+    val alpha by infinite.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "liveAlpha"
+    )
+    Box(
+        Modifier
+            .size(7.dp)
+            .clip(RoundedCornerShape(50))
+            .background(BrandGreen.copy(alpha = alpha))
+    )
 }

@@ -9,6 +9,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -105,6 +106,12 @@ fun RoomScreen(
                 initialVideoUrl = initialVideoUrl
             )
         }
+    }
+
+    // خروج با دکمه بازگشت فیزیکی — قطع اتصال تمیز
+    BackHandler {
+        vm.disconnect()
+        nav.popBackStack()
     }
 
     // پخش ویدیوی اولیه
@@ -222,6 +229,7 @@ fun RoomScreen(
                     onOptions = { optionsOpen = true },
                     onMembers = { membersOpen = true }
                 )
+                ConnectionBar(socketState)
                 VideoSection(
                     player = player, vm = vm, fileInfo = fileInfo,
                     isPlaying = player.isPlaying,
@@ -262,6 +270,7 @@ fun RoomScreen(
                 onOptions = { optionsOpen = true },
                 onMembers = { membersOpen = true }
             )
+            ConnectionBar(socketState)
             VideoSection(
                 player = player, vm = vm, fileInfo = fileInfo,
                 isPlaying = player.isPlaying,
@@ -357,7 +366,37 @@ fun RoomScreen(
 }
 
 // ============================================================
-//  نوار بالای اتاق
+//  نوار وضعیت اتصال — باریک زیر هدر
+// ============================================================
+@Composable
+private fun ConnectionBar(socketState: SocketState) {
+    val (text, color) = when (socketState) {
+        is SocketState.Connected -> "متصل" to BrandGreen
+        is SocketState.Connecting -> "در حال اتصال…" to BrandAmber
+        is SocketState.Error -> "قطع — تلاش مجدد…" to BrandDanger
+        else -> "قطع" to BrandDanger
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(color.copy(alpha = 0.1f))
+            .padding(horizontal = 14.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(6.dp)
+                .clip(RoundedCornerShape(50))
+                .background(color)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, fontSize = 10.sp, color = color, fontWeight = FontWeight.Medium)
+    }
+}
+
+// ============================================================
+//  نوار بالای اتاق — بازطراحی‌شده: گرادیان تیره + دکمه‌های گرد رنگی
+//  نام اتاق در قاب شیشه‌ای + کد نورانی + نشان زنده + آواتار اعضا
 // ============================================================
 @Composable
 private fun RoomTopBar(
@@ -372,40 +411,173 @@ private fun RoomTopBar(
     onOptions: () -> Unit,
     onMembers: () -> Unit
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+    val peers by vm.peers.collectAsState()
+    val locked = vm.roomLocked
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Brush.horizontalGradient(listOf(Color(0xFF0E0E1C), Color(0xFF131021), Color(0xFF0A0A16))))
     ) {
-        IconButton(onClick = onBack) { Icon(Icons.Default.ArrowForward, "خروج", tint = BrandTextMuted) }
-        Column(Modifier.weight(1f)) {
-            Text(
-                vm.roomName.ifBlank { "اتاق $roomCode" },
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("کد: $roomCode", fontSize = 11.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(8.dp))
-                when (socketState) {
-                    is SocketState.Connected -> StatusBar("متصل", BrandGreen)
-                    is SocketState.Connecting -> StatusBar("در حال اتصال…", BrandAmber)
-                    else -> StatusBar("قطع", BrandDanger)
+        // هاله نور
+        Box(
+            Modifier
+                .align(Alignment.TopStart)
+                .size(width = 140.dp, height = 40.dp)
+                .offset(x = 60.dp, y = (-12).dp)
+                .background(Brush.radialGradient(listOf(BrandPurple.copy(alpha = 0.18f), Color.Transparent)))
+        )
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .size(width = 120.dp, height = 40.dp)
+                .offset(x = (-20).dp, y = (-12).dp)
+                .background(Brush.radialGradient(listOf(BrandCyan.copy(alpha = 0.12f), Color.Transparent)))
+        )
+
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // ── نام اتاق + کد نورانی (وسط) ──
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // قاب شیشه‌ای نام
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🎬", fontSize = 13.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        vm.roomName.ifBlank { "اتاق $roomCode" },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 130.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    LiveDot()
+                    if (locked) {
+                        Spacer(Modifier.width(5.dp))
+                        Text("🔒", fontSize = 10.sp)
+                    }
+                }
+                // کد نورانی
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onCopy)
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        roomCode,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 3.sp,
+                        color = BrandCyan.copy(alpha = 0.95f),
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = BrandCyan.copy(alpha = 0.6f),
+                                offset = androidx.compose.ui.geometry.Offset.Zero,
+                                blurRadius = 8f
+                            )
+                        )
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.ContentCopy,
+                        "کپی کد",
+                        tint = BrandCyan.copy(alpha = 0.7f),
+                        modifier = Modifier.size(13.dp)
+                    )
                 }
             }
-        }
-        IconButton(onClick = onCopy) { Icon(Icons.Default.ContentCopy, "کپی کد", tint = BrandTextMuted, modifier = Modifier.size(19.dp)) }
-        IconButton(onClick = onShare) { Icon(Icons.Default.Share, "دعوت", tint = BrandTextMuted, modifier = Modifier.size(19.dp)) }
-        IconButton(onClick = onMembers) { Icon(Icons.Default.People, "اعضا", tint = BrandText, modifier = Modifier.size(20.dp)) }
-        IconButton(onClick = onFullscreen) {
-            Icon(
-                if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                "تمام‌صفحه",
-                tint = BrandText,
-                modifier = Modifier.size(20.dp)
+
+            // ── دکمه قفل (میزبان) ──
+            if (vm.isHost) {
+                TopBarIconButton(
+                    icon = if (locked) Icons.Default.Lock else Icons.Default.LockOpen,
+                    contentDescription = "قفل اتاق",
+                    tint = if (locked) Color(0xFFFCA5A5) else Color(0xFFFCD34D),
+                    bg = if (locked) Color(0xFFF43F5E).copy(alpha = 0.18f) else Color(0xFFF59E0B).copy(alpha = 0.15f),
+                    onClick = { vm.lock(!locked) }
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+
+            // ── اشتراک‌گذاری ──
+            TopBarIconButton(
+                icon = Icons.Default.Share,
+                contentDescription = "دعوت دوستان",
+                tint = BrandCyan,
+                bg = Color(0xFF22D3EE).copy(alpha = 0.12f),
+                onClick = onShare
+            )
+            Spacer(Modifier.width(6.dp))
+
+            // ── تمام‌صفحه ──
+            TopBarIconButton(
+                icon = if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                contentDescription = "تمام‌صفحه",
+                tint = Color(0xFFE879F9),
+                bg = Color(0xFFE879F9).copy(alpha = 0.12f),
+                onClick = onFullscreen
+            )
+            Spacer(Modifier.width(6.dp))
+
+            // ── اعضا با آواتار + بج ──
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF34D399).copy(alpha = 0.1f))
+                    .clickable(onClick = onMembers)
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // استک آواتار (۲ تا)
+                Row(Modifier, horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+                    peers.take(2).forEach { p ->
+                        AvatarImage(avatarId = p.avatar, size = 26.dp)
+                    }
+                    if (peers.isEmpty()) {
+                        Icon(Icons.Default.People, null, tint = Color(0xFF6EE7B7), modifier = Modifier.size(20.dp))
+                    }
+                }
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0xFF34D399).copy(alpha = 0.2f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        peers.size.toString(),
+                        color = Color(0xFF6EE7B7),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+            Spacer(Modifier.width(6.dp))
+
+            // ── گزینه‌ها ──
+            TopBarIconButton(
+                icon = Icons.Default.MoreVert,
+                contentDescription = "گزینه‌های بیشتر",
+                tint = BrandPurple,
+                bg = BrandPurple.copy(alpha = 0.12f),
+                onClick = onOptions
             )
         }
-        IconButton(onClick = onOptions) { Icon(Icons.Default.MoreVert, "بیشتر", tint = BrandText, modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -463,41 +635,48 @@ private fun VideoSection(
             }
         }
 
-        // دکمه‌های شناور پایین ویدیو
+        // دکمه‌های شناور پایین ویدیو — گرادیانی و شیک
         Row(
-            Modifier.align(Alignment.BottomEnd).padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.align(Alignment.BottomEnd).padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // انتخاب فایل محلی
-            FloatingActionButton(
-                onClick = onPickFile,
-                modifier = Modifier.size(42.dp),
-                containerColor = BrandCyan.copy(alpha = 0.9f),
-                shape = CircleShape
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(Color(0xFF06B6D4), Color(0xFF0EA5E9))))
+                    .clickable(onClick = onPickFile),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.FolderOpen, "فایل محلی", tint = Color(0xFF00333D), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.FolderOpen, "فایل محلی", tint = Color.White, modifier = Modifier.size(21.dp))
             }
             // تغییر لینک
-            FloatingActionButton(
-                onClick = onUrlDialog,
-                modifier = Modifier.size(42.dp),
-                containerColor = BrandCard.copy(alpha = 0.9f),
-                shape = CircleShape
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(Color(0xFF64748B), Color(0xFF475569))))
+                    .clickable(onClick = onUrlDialog),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Link, "لینک ویدیو", tint = Color.White, modifier = Modifier.size(20.dp))
             }
-            // پخش/توقف
-            FloatingActionButton(
-                onClick = onPlayPause,
-                modifier = Modifier.size(46.dp),
-                containerColor = BrandPurple,
-                shape = CircleShape
+            // پخش/توقف — دکمه اصلی گرادیانی بزرگتر
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(BrandPurple, BrandCyan)))
+                    .clickable(onClick = onPlayPause),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(30.dp)
                 )
             }
         }
@@ -582,15 +761,22 @@ private fun ChatPanel(
                 maxLines = 2,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = BrandCyan,
-                    unfocusedBorderColor = BrandCardLight
+                    unfocusedBorderColor = BrandPurple.copy(alpha = 0.3f),
+                    focusedContainerColor = BrandCardLight.copy(alpha = 0.4f),
+                    unfocusedContainerColor = BrandCardLight.copy(alpha = 0.25f),
+                    cursorColor = BrandCyan
                 )
             )
             Spacer(Modifier.width(8.dp))
-            FilledIconButton(
-                onClick = { onSend() },
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Brush.linearGradient(listOf(BrandPurple, BrandCyan)))
+                    .clickable { onSend() },
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Send, "ارسال", tint = Color.White)
+                Icon(Icons.Default.Send, "ارسال", tint = Color.White, modifier = Modifier.size(21.dp))
             }
         }
     }
@@ -765,21 +951,35 @@ private fun ReactionBurst(vm: RoomViewModel) {
 private fun PeerChip(p: WsPeer, isMe: Boolean) {
     Row(
         Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isMe) BrandPurple.copy(alpha = 0.22f) else BrandCard)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isMe) Brush.linearGradient(listOf(BrandPurple.copy(alpha = 0.35f), BrandCyan.copy(alpha = 0.15f)))
+                else androidx.compose.ui.graphics.SolidColor(BrandCard)
+            )
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AvatarImage(avatarId = p.avatar, size = 24.dp)
-        Spacer(Modifier.width(6.dp))
+        Box {
+            AvatarImage(avatarId = p.avatar, size = 28.dp)
+            if (p.isLeader) {
+                Text(
+                    "👑",
+                    fontSize = 10.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 4.dp, y = 4.dp)
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
         Text(
             if (isMe) "${p.name} (من)" else p.name,
             fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 90.dp)
         )
-        if (p.isLeader) { Spacer(Modifier.width(4.dp)); Text("👑", fontSize = 12.sp) }
     }
 }
 

@@ -5,21 +5,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.ui.components.*
 import com.hamfilm.app.ui.navigation.Routes
 import com.hamfilm.app.ui.theme.*
 import com.hamfilm.app.viewmodel.RoomViewModel
-import androidx.compose.ui.unit.sp
 
 // لینک‌های نمونه برای تست سریع
 private val SampleVideos = listOf(
@@ -27,8 +31,6 @@ private val SampleVideos = listOf(
     "https://test-videos.co.uk/vids/bigbuckbunny/mkv/720/Big_Buck_Bunny_720_10s_1MB.mkv",
     "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
 )
-
-// آواتارهای تصویری بک‌اند (a1..a10)
 
 @Composable
 fun CreateRoomScreen(nav: NavHostController) {
@@ -46,73 +48,138 @@ fun CreateRoomScreen(nav: NavHostController) {
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(20.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Text("🎬 ساخت اتاق جدید", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(20.dp))
-            HamTextField(name, { name = it }, "نام اتاق")
-            Spacer(Modifier.height(14.dp))
-            HamTextField(
-                videoUrl, { videoUrl = it; urlError = null },
-                "لینک ویدیو (MP4 / HLS / یوتیوب)",
-                placeholder = "https://example.com/movie.mp4"
-            )
-            urlError?.let {
-                Spacer(Modifier.height(6.dp))
-                Text(it, color = BrandDanger, fontSize = 12.sp)
-            }
-            Spacer(Modifier.height(10.dp))
-            Text("یا از لینک‌های نمونه انتخاب کن:", fontSize = 12.sp, color = BrandTextMuted)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
-                items(SampleVideos) { url ->
-                    AssistChip(
-                        onClick = { videoUrl = url; urlError = null },
-                        label = { Text("ویدیو ${SampleVideos.indexOf(url) + 1}") }
-                    )
+            // ── هدر ──
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(BrandGradientSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🎬", fontSize = 26.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text("ساخت اتاق جدید", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Text("بعد از ساخت، یک کد و لینک دعوت یکتا می‌گیری", fontSize = 12.sp, color = BrandTextMuted)
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            HamTextField(password, { password = it }, "رمز اتاق (اختیاری)", password = true)
 
-            Spacer(Modifier.height(16.dp))
-            Text("آواتارت:", style = MaterialTheme.typography.labelLarge)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                items(AvatarIds) { a ->
-                    Box(
-                        Modifier
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                            .clickable { avatar = a }
-                            .then(
-                                if (a == avatar)
-                                    Modifier.background(BrandGradientSoft)
-                                else Modifier
-                            )
-                            .padding(4.dp)
-                    ) {
-                        AvatarChip(avatarId = a, size = 44.dp)
+            Spacer(Modifier.height(20.dp))
+
+            // ── کارت جزئیات اتاق ──
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("جزئیات اتاق", fontWeight = FontWeight.Black, fontSize = 15.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "لینک فیلم اختیاری است — می‌توانی بعداً داخل اتاق اضافه‌اش کنی.",
+                    fontSize = 11.sp,
+                    color = BrandTextMuted
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── نام اتاق ──
+                SectionLabel("نام اتاق")
+                HamTextField(
+                    name, { name = it },
+                    "نام اتاق",
+                    placeholder = "مثلاً: شب فیلم با رها 🤍"
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                // ── لینک ویدیو (اختیاری) ──
+                SectionLabel("لینک فیلم (اختیاری)")
+                HamTextField(
+                    videoUrl, { videoUrl = it; urlError = null },
+                    "لینک ویدیو (MP4 / HLS / یوتیوب)",
+                    placeholder = "https://example.com/movie.mp4"
+                )
+                if (urlError != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(urlError!!, color = BrandDanger, fontSize = 12.sp)
+                }
+
+                Spacer(Modifier.height(10.dp))
+                Text("یا از لینک‌های نمونه:", fontSize = 11.sp, color = BrandTextMuted)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    items(SampleVideos) { url ->
+                        AssistChip(
+                            onClick = { videoUrl = url; urlError = null },
+                            label = { Text("ویدیو ${SampleVideos.indexOf(url) + 1}", fontSize = 12.sp) },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = BrandCardLight,
+                                labelColor = BrandText
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BrandCardLight)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // ── رمز اتاق (اختیاری) ──
+                SectionLabel("رمز اتاق (اختیاری)")
+                HamTextField(
+                    password, { password = it },
+                    "رمز اتاق (اختیاری)",
+                    placeholder = "فقط مهمان‌هایی که رمز دارند وارد می‌شوند",
+                    password = true
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── آواتار ──
+                SectionLabel("آواتارت:")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    items(AvatarIds) { a ->
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { avatar = a }
+                                .then(
+                                    if (a == avatar)
+                                        Modifier.background(BrandGradientSoft)
+                                    else Modifier
+                                )
+                                .padding(4.dp)
+                        ) {
+                            AvatarChip(avatarId = a, size = 46.dp)
+                        }
                     }
                 }
             }
 
+            // ── خطا ──
             error?.let {
-                Spacer(Modifier.height(10.dp))
-                Text(it, color = BrandDanger, fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text(it, color = BrandDanger, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
-            Spacer(Modifier.weight(1f))
+
+            Spacer(Modifier.height(18.dp))
+
+            // ── دکمه ساخت ──
             GradientButton(
                 text = "ساخت اتاق و شروع",
                 loading = creating,
                 onClick = {
                     val v = videoUrl.trim()
-                    if (v.isBlank()) { error = "لینک ویدیو را وارد کن"; return@GradientButton }
-                    if (!v.startsWith("http")) { error = "فقط لینک‌های http/https معتبر هستند"; return@GradientButton }
+                    // لینک اختیاری است — فقط اگر وارد شده باشد اعتبارسنجی کن
+                    if (v.isNotBlank() && !v.startsWith("http")) {
+                        urlError = "فقط لینک‌های http/https معتبر هستند"
+                        return@GradientButton
+                    }
                     creating = true; error = null
                     vm.createRoom(name.ifBlank { "اتاق من" }, v, password, avatar) { res ->
                         creating = false
                         when (res) {
                             is RoomViewModel.RoomInfoResult.Success -> {
                                 TokenStore.avatar = avatar
-                                // رمز را کاربر خودش وارد کرده — به صفحه اتاق منتقل می‌شود
                                 nav.navigate(Routes.room(res.code, password, v)) {
                                     launchSingleTop = true
                                 }
@@ -123,7 +190,16 @@ fun CreateRoomScreen(nav: NavHostController) {
                 },
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(16.dp))
+
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "با ساخت اتاق، میزبان می‌شوی و کنترل تغییر فیلم با توست.",
+                fontSize = 11.sp,
+                color = BrandTextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -143,46 +219,67 @@ fun JoinRoomScreen(nav: NavHostController) {
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.Center
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("🔑", fontSize = 44.sp)
-            Text("ورود به اتاق", style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(16.dp))
+            Box(
+                Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(BrandGradientSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🔑", fontSize = 30.sp)
+            }
+            Spacer(Modifier.height(14.dp))
+            Text("ورود به اتاق", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+            Text("کد ۶ رقمی یا لینک دعوتی که دوستت فرستاده را وارد کن", fontSize = 12.sp, color = BrandTextMuted, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp))
-            HamTextField(
-                code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8); error = null },
-                "کد اتاق",
-                placeholder = "مثلاً AB12CD",
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Ascii
-            )
-            Spacer(Modifier.height(14.dp))
-            HamTextField(password, { password = it }, "رمز اتاق (اگر دارد)", password = true)
-            Spacer(Modifier.height(14.dp))
-            HamTextField(name, { name = it }, "نام نمایشی")
-            Spacer(Modifier.height(12.dp))
-            Text("آواتارت:", style = MaterialTheme.typography.labelLarge)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                items(AvatarIds) { a ->
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { avatar = a }
-                            .then(
-                                if (a == avatar)
-                                    Modifier.background(BrandGradientSoft)
-                                else Modifier
-                            )
-                            .padding(4.dp)
-                    ) {
-                        AvatarChip(avatarId = a, size = 44.dp)
+
+            GlassCard(Modifier.fillMaxWidth()) {
+                SectionLabel("کد یا لینک دعوت *")
+                HamTextField(
+                    code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8); error = null },
+                    "کد اتاق",
+                    placeholder = "مثلاً AB12CD",
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Ascii
+                )
+                Spacer(Modifier.height(14.dp))
+                SectionLabel("رمز اتاق (اگر دارد)")
+                HamTextField(password, { password = it }, "رمز اتاق (اگر دارد)", password = true)
+                Spacer(Modifier.height(14.dp))
+                SectionLabel("نام نمایشی")
+                HamTextField(name, { name = it }, "نام نمایشی")
+
+                Spacer(Modifier.height(16.dp))
+                SectionLabel("آواتارت:")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    items(AvatarIds) { a ->
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { avatar = a }
+                                .then(
+                                    if (a == avatar)
+                                        Modifier.background(BrandGradientSoft)
+                                    else Modifier
+                                )
+                                .padding(4.dp)
+                        ) {
+                            AvatarChip(avatarId = a, size = 46.dp)
+                        }
                     }
                 }
             }
+
             error?.let {
-                Spacer(Modifier.height(10.dp))
-                Text(it, color = BrandDanger, fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text(it, color = BrandDanger, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
-            Spacer(Modifier.height(20.dp))
+
+            Spacer(Modifier.height(18.dp))
             GradientButton(
                 text = "ورود به اتاق",
                 loading = checking,
@@ -213,6 +310,7 @@ fun JoinRoomScreen(nav: NavHostController) {
             TextButton(onClick = { nav.popBackStack() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text("بازگشت", color = BrandTextMuted)
             }
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
