@@ -367,6 +367,7 @@ fun RoomScreen(
                                 onTyping = { on -> vm.notifyTyping(on) },
                                 onReaction = { vm.sendReaction(it) },
                                 myId = vm.myId,
+                                seenById = { vm.isSeenByOthers(it) },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -428,6 +429,7 @@ fun RoomScreen(
                     roomCode = roomCode,
                     onPlayPause = ::onPlayPause,
                     onOpenSettings = { playerSettingsOpen = true },
+                    onFullscreen = { fullscreen = !fullscreen },
                     onPlayerViewReady = { playerViewRef = it },
                     modifier = Modifier.weight(1f)
                 )
@@ -447,6 +449,7 @@ fun RoomScreen(
                 onTyping = { on -> vm.notifyTyping(on) },
                 onReaction = { vm.sendReaction(it) },
                 myId = vm.myId,
+                seenById = { vm.isSeenByOthers(it) },
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
@@ -505,6 +508,7 @@ fun RoomScreen(
                     onTyping = { on -> vm.notifyTyping(on) },
                     onReaction = { vm.sendReaction(it) },
                     myId = vm.myId,
+                    seenById = { vm.isSeenByOthers(it) },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -1073,6 +1077,7 @@ private fun ChatPanel(
     onTyping: (Boolean) -> Unit,
     onReaction: (String) -> Unit,
     myId: String,
+    seenById: (Long) -> Boolean = { false },
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -1088,7 +1093,7 @@ private fun ChatPanel(
         ) {
             items(messages, key = { it.id }) { m ->
                 val isMine = m.senderId.isNotBlank() && m.senderId == myId
-                MessageRow(m, isMe = isMine, seen = if (isMine) vm.isSeenByOthers(m.ts) else false)
+                MessageRow(m, isMe = isMine, seen = if (isMine) seenById(m.ts) else false)
             }
             if (typing.isNotEmpty()) {
                 item { Text("✍️ ${typing.size} نفر در حال تایپ…", fontSize = 12.sp, color = BrandTextMuted) }

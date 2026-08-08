@@ -111,7 +111,7 @@ fun CreateRoomScreen(nav: NavHostController) {
                     items(SampleVideos) { url ->
                         AssistChip(
                             onClick = { videoUrl = url; urlError = null },
-                            label = { Text("ویدیو ${SampleVideos.indexOf(url, color = BrandText) + 1}", fontSize = 12.sp) },
+                            label = { Text("ویدیو ${SampleVideos.indexOf(url) + 1}", fontSize = 12.sp) },
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = BrandCardLight,
                                 labelColor = BrandText

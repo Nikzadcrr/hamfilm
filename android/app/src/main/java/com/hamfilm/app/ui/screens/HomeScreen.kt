@@ -417,7 +417,7 @@ private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs:
         emoji,
         fontSize = 19.sp,
         modifier = modifier.graphicsLayer {
-            translationY = (-16 * floatY, color = BrandText).dp.toPx()
+            translationY = (-16 * floatY).dp.toPx()
             alpha = floatAlpha
         }
     )

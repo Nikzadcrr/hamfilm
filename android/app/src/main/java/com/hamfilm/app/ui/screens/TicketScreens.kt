@@ -48,7 +48,7 @@ fun TicketsScreen(nav: NavHostController) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                Text("🎟️ تیکت‌های من", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f, color = BrandText))
+                Text("🎟️ تیکت‌های من", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
                 if (TokenStore.token.isNotBlank()) {
                     FilledIconButton(onClick = { showNew = true }, colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)) {
                         Icon(Icons.Default.Add, "تیکت جدید", tint = androidx.compose.ui.graphics.Color.White)
@@ -68,7 +68,7 @@ fun TicketsScreen(nav: NavHostController) {
                                     Text(t.subject, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, color = BrandText)
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault(, color = BrandText)).format(Date(t.createdAt)),
+                                        SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(t.createdAt)),
                                         color = BrandTextMuted,
                                         fontSize = 11.sp
                                     )
@@ -192,7 +192,7 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                    Text(d.subject, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f, color = BrandText), maxLines = 1)
+                    Text(d.subject, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1)
                     StatusBar(if (d.status == "open") "باز" else "بسته", if (d.status == "open") BrandGreen else BrandTextMuted)
                 }
                 LazyColumn(
@@ -215,7 +215,7 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
                                     Text(r.text, fontSize = 14.sp, color = BrandText)
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        SimpleDateFormat("MM/dd HH:mm", Locale.getDefault(, color = BrandText)).format(Date(r.ts)),
+                                        SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date(r.ts)),
                                         fontSize = 10.sp,
                                         color = BrandTextMuted
                                     )
