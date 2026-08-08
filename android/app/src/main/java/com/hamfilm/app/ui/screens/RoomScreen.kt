@@ -278,6 +278,7 @@ fun RoomScreen(
                 roomCode = roomCode,
                 onPlayPause = ::onPlayPause,
                 onOpenSettings = { playerSettingsOpen = true },
+                onPlayerViewReady = { playerViewRef = it },
                 modifier = Modifier.fillMaxSize()
             )
             // دکمه بستن تمام‌صفحه — شناور بالا
@@ -397,6 +398,7 @@ fun RoomScreen(
                     roomCode = roomCode,
                     onPlayPause = ::onPlayPause,
                     onOpenSettings = { playerSettingsOpen = true },
+                    onPlayerViewReady = { playerViewRef = it },
                     modifier = Modifier.weight(1f)
                 )
                 VideoToolbar(
@@ -443,6 +445,7 @@ fun RoomScreen(
                 roomCode = roomCode,
                 onPlayPause = ::onPlayPause,
                 onOpenSettings = { playerSettingsOpen = true },
+                onPlayerViewReady = { playerViewRef = it },
                 modifier = Modifier.aspectRatio(16f / 9f)
             )
             VideoToolbar(
@@ -792,6 +795,7 @@ private fun VideoSection(
     roomCode: String,
     onPlayPause: () -> Unit,
     onOpenSettings: () -> Unit,
+    onPlayerViewReady: (PlayerView) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -809,7 +813,7 @@ private fun VideoSection(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                }.also { playerViewRef = it }
+                }.also { onPlayerViewReady(it) }
             },
             modifier = Modifier.fillMaxSize()
         )

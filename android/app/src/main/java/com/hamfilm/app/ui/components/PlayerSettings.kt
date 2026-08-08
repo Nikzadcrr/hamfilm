@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.text.Cue
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.CaptionStyleCompat
@@ -65,24 +64,26 @@ fun PlayerSettingsSheet(
             // ── ترک صوتی ──
             Text("🔊 ترک صوتی", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BrandText)
             Spacer(Modifier.height(8.dp))
-            val audioTracks = remember(player) {
+            val audioLangs = remember(player) {
                 player?.currentTracks?.groups
                     ?.filter { it.type == C.TRACK_TYPE_AUDIO }
+                    ?.map { g ->
+                        val fmt = g.getTrackFormat(0)
+                        fmt.language?.takeIf { it.isNotBlank() } ?: "ترک"
+                    }
+                    ?.distinct()
                     ?: emptyList()
             }
-            if (audioTracks.isEmpty()) {
+            if (audioLangs.isEmpty()) {
                 Text(
                     "ترک صوتی جداگانه‌ای پیدا نشد (پخش پیش‌فرض صدا)",
                     fontSize = 11.sp,
                     color = BrandTextMuted
                 )
             } else {
-                audioTracks.forEachIndexed { gi, group ->
-                    val format = group.getTrackFormat(0)
-                    val lang = format.language?.takeIf { it.isNotBlank() } ?: "ترک ${gi + 1}"
-                    val selected = player?.trackSelectionParameters?.overrides?.any {
-                        it.mediaTrackGroup == group.mediaTrackGroup
-                    } == true
+                val prefLang = player?.trackSelectionParameters?.preferredAudioLanguage
+                audioLangs.forEach { lang ->
+                    val selected = prefLang == lang
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -92,8 +93,7 @@ fun PlayerSettingsSheet(
                             .clickable {
                                 player?.trackSelectionParameters = player.trackSelectionParameters
                                     .buildUpon()
-                                    .clearOverrides()
-                                    .addOverride(TrackSelectionOverride(group.mediaTrackGroup, 0))
+                                    .setPreferredAudioLanguage(lang)
                                     .build()
                             }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -184,9 +184,20 @@ fun PlayerSettingsSheet(
 
 /** ساخت CaptionStyle برای رنگ زیرنویس */
 fun buildCaptionStyle(index: Int): CaptionStyleCompat {
-    val color = SubtitleColors[index.coerceIn(0, SubtitleColors.size - 1)].color
-    return CaptionStyleCompat.Builder()
-        .setForegroundColor(color)
-        .setBackgroundColor(Color.Black.copy(alpha = 0.6f))
-        .build()
+    val c = SubtitleColors[index.coerceIn(0, SubtitleColors.size - 1)].color
+    val fg = android.graphics.Color.argb(
+        255,
+        (c.red * 255).toInt(),
+        (c.green * 255).toInt(),
+        (c.blue * 255).toInt()
+    )
+    val bg = android.graphics.Color.argb(153, 0, 0, 0)
+    return CaptionStyleCompat(
+        fg,                       // foregroundColor
+        bg,                       // backgroundColor
+        android.graphics.Color.TRANSPARENT, // windowColor
+        CaptionStyleCompat.EDGE_TYPE_OUTLINE, // edgeType
+        fg,                       // edgeColor
+        android.graphics.Typeface.DEFAULT // typeface
+    )
 }
