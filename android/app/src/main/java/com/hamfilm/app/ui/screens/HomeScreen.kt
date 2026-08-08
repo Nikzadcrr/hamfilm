@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.api.AppRepository
@@ -199,7 +200,7 @@ fun OnboardingDialog(onFinish: () -> Unit) {
                                 .padding(3.dp)
                                 .size(if (i == step) 18.dp else 8.dp)
                                 .clip(RoundedCornerShape(9.dp))
-                                .background(if (i == step) BrandGradient else BrandCardLight)
+                                .background(if (i == step) BrandPurple else BrandCardLight)
                         )
                     }
                 }

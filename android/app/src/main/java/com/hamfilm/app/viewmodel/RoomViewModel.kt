@@ -67,9 +67,9 @@ class RoomViewModel : ViewModel() {
     }
 
     /** اتصال WebSocket به اتاق */
-    fun connect(code: String, name: String, avatar: String, password: String, videoUrl: String = "") {
+    fun connect(code: String, name: String, avatar: String, password: String, initialVideoUrl: String = "") {
         roomCode = code
-        this.videoUrl = videoUrl
+        this.videoUrl = initialVideoUrl
         val s = RoomSocket(code).also {
             socket = it
             it.connect(name, avatar, password)
@@ -100,7 +100,7 @@ class RoomViewModel : ViewModel() {
                     "play" -> { isPlaying = true; onRemotePlay?.invoke(c.timeMs) }
                     "pause" -> { isPlaying = false; onRemotePause?.invoke(c.timeMs) }
                     "seek" -> { onRemoteSeek?.invoke(c.timeMs) }
-                    "video" -> { this.videoUrl = c.url; this.isPlaying = true; onRemoteVideo?.invoke(c.url) }
+                    "video" -> { videoUrl = c.url; isPlaying = true; onRemoteVideo?.invoke(c.url) }
                 }
             }
         }

@@ -81,7 +81,7 @@ fun RoomScreen(
                 name = TokenStore.name.ifBlank { "مهمان" },
                 avatar = TokenStore.avatar,
                 password = initialPassword,
-                videoUrl = initialVideoUrl
+                initialVideoUrl = initialVideoUrl
             )
         }
     }
