@@ -106,7 +106,7 @@ fun HomeScreen(nav: NavHostController) {
             // ── کارت حساب کاربری / ورود ──
             Spacer(Modifier.height(18.dp))
             val authVm = remember { AuthViewModel() }
-            val isLoggedIn by authVm.isLoggedIn
+            val isLoggedIn = authVm.isLoggedIn
             if (isLoggedIn) {
                 // لاگین شده: نمایش مشخصات + دسترسی سریع
                 GlassCard(Modifier.fillMaxWidth()) {
