@@ -77,6 +77,7 @@ class RoomSocket(
 
     private var webSocket: WebSocket? = null
     private var retries = 0
+    private var pingJob: Job? = null
 
     // ---------- state ----------
     private val _state = MutableStateFlow<SocketState>(SocketState.Idle)
@@ -136,6 +137,9 @@ class RoomSocket(
     private var avatar: String = ""
     private var password: String = ""
 
+    /** داده زنده پلیر برای پینگ همگام‌سازی: (در حال پخش؟, موقعیت به میلی‌ثانیه) */
+    var playbackSnapshot: (() -> Pair<Boolean, Long>)? = null
+
     // ---------- اتصال ----------
     fun connect(name: String, avatar: String, password: String = "") {
         this.name = name
@@ -143,6 +147,17 @@ class RoomSocket(
         this.password = password
         _state.value = SocketState.Connecting
         openSocket()
+        // پینگ دوره‌ای همگام‌سازی — کاربر را زنده نگه می‌دارد و انحراف را اصلاح می‌کند
+        pingJob?.cancel()
+        pingJob = scope.launch {
+            while (isActive) {
+                delay(15_000)
+                if (_state.value == SocketState.Connected) {
+                    val (playing, posMs) = playbackSnapshot?.invoke() ?: (false to 0L)
+                    sendPing(posMs, playing)
+                }
+            }
+        }
     }
 
     private fun openSocket() {
@@ -475,11 +490,11 @@ class RoomSocket(
         })
     }
 
-    fun sendPing() {
+    fun sendPing(positionMs: Long, playing: Boolean) {
         send(JSONObject().apply {
             put("type", "ping")
-            put("time", System.currentTimeMillis() / 1000.0)
-            put("playing", _playback.value.playing)
+            put("time", positionMs / 1000.0)      // موقعیت واقعی پخش به ثانیه
+            put("playing", playing)
             put("t", System.currentTimeMillis())
             put("buffering", false)
         })
@@ -509,6 +524,8 @@ class RoomSocket(
 
     fun disconnect() {
         retries = 999
+        pingJob?.cancel()
+        pingJob = null
         webSocket?.close(1000, "bye")
         webSocket = null
         _state.value = SocketState.Idle

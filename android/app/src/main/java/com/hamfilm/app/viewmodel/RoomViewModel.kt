@@ -193,10 +193,13 @@ class RoomViewModel : ViewModel() {
         socket?.sendTyping(on)
     }
 
-    fun togglePlay(currentPosMs: Long) {
+    /**
+     * ارسال فرمان پخش/توقف به سرور — وضعیت دقیقاً همان چیزی است که کاربر خواسته.
+     * (نسخه قدیمی دوباره وضعیت را برعکس می‌کرد و باعث می‌شد پخش → استپ شود)
+     */
+    fun setPlayback(playing: Boolean, currentPosMs: Long) {
         if (!canControl) return
-        isPlaying = !isPlaying
-        if (isPlaying) socket?.sendPlay(currentPosMs) else socket?.sendPause(currentPosMs)
+        if (playing) socket?.sendPlay(currentPosMs) else socket?.sendPause(currentPosMs)
     }
 
     fun seekTo(posMs: Long) {
@@ -244,6 +247,15 @@ class RoomViewModel : ViewModel() {
     /** وضعیت پخش محلی پلیر (برای آیکون درست) — بدون ارسال به سرور */
     fun onLocalPlayStateChange(playing: Boolean) {
         isPlaying = playing
+    }
+
+    /**
+     * اتصال داده‌های زنده پلیر به پینگ همگام‌سازی.
+     * هر ۱۵ ثانیه موقعیت واقعی پخش به سرور می‌رود تا (۱) کاربر از لیست اعضا حذف نشود
+     * و (۲) اگر از بقیه عقب/جلو افتاد، سرور پیام correct بفرستد.
+     */
+    fun bindPlayerToPing(playingProvider: () -> Boolean, positionProvider: () -> Long) {
+        socket?.playbackSnapshot = { playingProvider() to positionProvider() }
     }
 
     fun markChatRead() {
