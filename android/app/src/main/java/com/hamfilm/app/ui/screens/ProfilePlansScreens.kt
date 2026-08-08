@@ -50,7 +50,7 @@ fun PlansScreen(nav: NavHostController) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                Text("💎 پلن‌های هم‌فیلم", style = MaterialTheme.typography.headlineSmall)
+                Text("💎 پلن‌های هم‌فیلم", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
             if (loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = BrandCyan) }
@@ -90,8 +90,8 @@ fun PlansScreen(nav: NavHostController) {
                             Spacer(Modifier.height(10.dp))
                             plan.features.forEach { f ->
                                 Row(Modifier.padding(vertical = 2.dp)) {
-                                    Text("✅ ", fontSize = 13.sp)
-                                    Text(f, fontSize = 13.sp)
+                                    Text("✅ ", fontSize = 13.sp, color = BrandText)
+                                    Text(f, fontSize = 13.sp, color = BrandText)
                                 }
                             }
                             Spacer(Modifier.height(12.dp))
@@ -173,7 +173,7 @@ fun ProfileScreen(nav: NavHostController) {
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandDanger)
                 ) {
-                    Text("خروج از حساب", fontWeight = FontWeight.Bold)
+                    Text("خروج از حساب", fontWeight = FontWeight.Bold, color = BrandText)
                 }
             }
             Spacer(Modifier.height(16.dp))

@@ -29,8 +29,8 @@ fun LoginScreen(nav: NavHostController) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Text("👋", fontSize = 44.sp)
-            Text("ورود به هم‌فیلم", style = MaterialTheme.typography.headlineMedium)
+            Text("👋", fontSize = 44.sp, color = BrandText)
+            Text("ورود به هم‌فیلم", style = MaterialTheme.typography.headlineMedium, color = BrandText)
             Spacer(Modifier.height(24.dp))
             HamTextField(username, { username = it }, "نام کاربری")
             Spacer(Modifier.height(14.dp))
@@ -51,7 +51,7 @@ fun LoginScreen(nav: NavHostController) {
                 }
             }
             TextButton(onClick = { nav.navigate(Routes.HOME) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("ورود بدون حساب (مهمان)", color = BrandTextMuted, fontSize = 12.sp)
+                Text("ورود بدون حساب (مهمان, color = BrandText)", color = BrandTextMuted, fontSize = 12.sp)
             }
         }
     }
@@ -71,8 +71,8 @@ fun RegisterScreen(nav: NavHostController) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Text("📝", fontSize = 44.sp)
-            Text("ساخت حساب", style = MaterialTheme.typography.headlineMedium)
+            Text("📝", fontSize = 44.sp, color = BrandText)
+            Text("ساخت حساب", style = MaterialTheme.typography.headlineMedium, color = BrandText)
             Spacer(Modifier.height(24.dp))
             HamTextField(name, { name = it }, "نام نمایشی")
             Spacer(Modifier.height(14.dp))

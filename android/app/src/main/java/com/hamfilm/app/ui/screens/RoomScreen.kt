@@ -69,7 +69,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private val Emojis = listOf("❤️", "😂", "😮", "👍", "😢", "🔥", "🎬", "🍿")
+private val Emojis = listOf("❤️", "😂", "😮", "👍", "😢", "🔥", "🎬", "🍿", "😘", "🙏")
 private val Speeds = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,6 +232,15 @@ fun RoomScreen(
     var chatOpen by remember { mutableStateOf(!isLandscape) }
     var fsChatOpen by remember { mutableStateOf(false) }
     val unread by vm.unread.collectAsState()
+
+    // ── auto-hide کنترل‌ها در تمام‌صفحه: بعد از ۳ ثانیه بدون لمس مخفی می‌شوند ──
+    var controlsVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(fullscreen, controlsVisible) {
+        if (fullscreen && controlsVisible) {
+            delay(3000)
+            controlsVisible = false
+        }
+    }
     var membersOpen by remember { mutableStateOf(false) }
     var optionsOpen by remember { mutableStateOf(false) }
     var urlDialogOpen by remember { mutableStateOf(false) }
@@ -245,13 +254,29 @@ fun RoomScreen(
     val fileInfo by vm.fileInfo.collectAsState()
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.lastIndex)
+            vm.markChatRead()
+        }
     }
 
     fun onPlayPause() {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        player.playWhenReady = !player.playWhenReady
+        val next = !player.isPlaying
+        player.playWhenReady = next
+        vm.onLocalPlayStateChange(next)
         vm.togglePlay(player.currentPosition)
+    }
+
+    // ── همگام‌سازی وضعیت پخش پلیر با state (آیکون درست) ──
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                vm.onLocalPlayStateChange(isPlaying)
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
 
     // اعمال رنگ زیرنویس
@@ -268,131 +293,137 @@ fun RoomScreen(
 
     // ---------- چیدمان ----------
     if (fullscreen) {
-        // ═══ حالت تمام‌صفحه: فقط ویدیو + دکمه بستن شناور ═══
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
+        // ═══ حالت تمام‌صفحه: فقط ویدیو + کنترل‌های شناور (auto-hide بعد از ۳ ثانیه) ═══
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { controlsVisible = true }
+        ) {
             VideoSection(
                 player = player, vm = vm, fileInfo = fileInfo,
-                isPlaying = player.isPlaying,
+                isPlaying = vm.isPlaying,
                 roomName = vm.roomName,
                 roomCode = roomCode,
                 onPlayPause = ::onPlayPause,
                 onOpenSettings = { playerSettingsOpen = true },
+                onFullscreen = { fullscreen = false },
                 onPlayerViewReady = { playerViewRef = it },
                 modifier = Modifier.fillMaxSize()
             )
-            // دکمه بستن تمام‌صفحه — شناور بالا
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(10.dp)
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .clickable { fullscreen = false },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.FullscreenExit,
-                    "خروج از تمام‌صفحه",
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            // نام اتاق شناور بالا-چپ
-            Box(
-                Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(10.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black.copy(alpha = 0.45f))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    vm.roomName.ifBlank { "اتاق $roomCode" },
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 160.dp)
-                )
-            }
-            // ── چت افقی تمام‌صفحه: دکمه شناور + پنل کنار (مثل سایت) ──
-            if (fsChatOpen) {
-                Box(
-                    Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight()
-                        .widthIn(max = 320.dp)
-                        .background(BrandCard.copy(alpha = 0.92f))
-                ) {
-                    ChatPanel(
-                        messages = messages, typing = typing, listState = listState,
-                        chatText = chatText, onChatText = { chatText = it },
-                        onSend = { vm.sendChat(chatText); chatText = ""; vm.notifyTyping(false) },
-                        onTyping = { on -> vm.notifyTyping(on) },
-                        onReaction = { vm.sendReaction(it) },
-                        myId = vm.myId,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            } else {
-                // دکمه چت شناور
-                Box(
-                    Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 12.dp)
-                        .size(50.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Brush.linearGradient(listOf(BrandPurple, BrandCyan)))
-                        .clickable { fsChatOpen = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Chat, "چت زنده", tint = Color.White, modifier = Modifier.size(24.dp))
-                    if (unread > 0) {
-                        Box(
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = 4.dp, y = (-4).dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color(0xFFF43F5E))
-                                .padding(horizontal = 5.dp, vertical = 1.dp)
-                        ) {
-                            Text(unread.toString(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+
+            // ── کنترل‌های شناور — با controlsVisible مخفی/ظاهر می‌شوند ──
+            if (controlsVisible) {
+                // ── چت افقی تمام‌صفحه: پنل کنار با دکمه بستن + گوشه گرد + فاصله از بالا ──
+                if (fsChatOpen) {
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .widthIn(max = 320.dp)
+                            .padding(vertical = 48.dp)
+                            .padding(end = 10.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(BrandCard.copy(alpha = 0.96f))
+                    ) {
+                        Column(Modifier.fillMaxSize()) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "💬 چت زنده",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = BrandText,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Box(
+                                    Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color.White.copy(alpha = 0.1f))
+                                        .clickable { fsChatOpen = false },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        "بستن چت",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            HorizontalDivider(color = BrandCardLight)
+                            ChatPanel(
+                                messages = messages, typing = typing, listState = listState,
+                                chatText = chatText, onChatText = { chatText = it },
+                                onSend = { vm.sendChat(chatText); chatText = ""; vm.notifyTyping(false) },
+                                onTyping = { on -> vm.notifyTyping(on) },
+                                onReaction = { vm.sendReaction(it) },
+                                myId = vm.myId,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                } else {
+                    // دکمه چت شناور کنار صفحه
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 12.dp)
+                            .size(50.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Brush.linearGradient(listOf(BrandPurple, BrandCyan)))
+                            .clickable { fsChatOpen = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Chat, "چت زنده", tint = Color.White, modifier = Modifier.size(24.dp))
+                        if (unread > 0) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 4.dp, y = (-4).dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color(0xFFF43F5E))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(unread.toString(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
-            }
-            // نوتیف پیام‌ها بالا
-            Box(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 8.dp)
-            ) {
-                ChatNotifyStack(messages = messages, myId = vm.myId, onOpenChat = { fsChatOpen = true })
+
+                // نوتیف پیام‌ها بالا
+                Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 8.dp)
+                ) {
+                    ChatNotifyStack(messages = messages, myId = vm.myId, onOpenChat = { fsChatOpen = true })
+                }
             }
         }
-    } else if (isLandscape) {
+        } else if (isLandscape) {
         // ═══ حالت افقی (غیر تمام‌صفحه): ویدیو سمت راست + چت کنارش ═══
         Row(Modifier.fillMaxSize().background(BrandBg)) {
             Column(Modifier.weight(1.5f).fillMaxHeight()) {
                 RoomTopBar(
-                    vm = vm, roomCode = roomCode, socketState = socketState,
-                    fullscreen = fullscreen,
-                    onBack = { vm.disconnect(); nav.popBackStack() },
-                    onFullscreen = { fullscreen = !fullscreen },
-                    onShare = { shareRoomCode(context, roomCode) },
-                    onCopy = { copyRoomCode(context, roomCode) },
-                    onOptions = { optionsOpen = true },
-                    onMembers = { membersOpen = true }
-                )
+                vm = vm, roomCode = roomCode, socketState = socketState,
+                onShare = { shareRoomCode(context, roomCode) },
+                onCopy = { copyRoomCode(context, roomCode) },
+                onMembers = { membersOpen = true }
+            )
                 ConnectionBar(socketState)
                 VideoSection(
                     player = player, vm = vm, fileInfo = fileInfo,
-                    isPlaying = player.isPlaying,
+                    isPlaying = vm.isPlaying,
                     roomName = vm.roomName,
                     roomCode = roomCode,
                     onPlayPause = ::onPlayPause,
@@ -428,22 +459,19 @@ fun RoomScreen(
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             RoomTopBar(
                 vm = vm, roomCode = roomCode, socketState = socketState,
-                fullscreen = fullscreen,
-                onBack = { vm.disconnect(); nav.popBackStack() },
-                onFullscreen = { fullscreen = !fullscreen },
                 onShare = { shareRoomCode(context, roomCode) },
                 onCopy = { copyRoomCode(context, roomCode) },
-                onOptions = { optionsOpen = true },
                 onMembers = { membersOpen = true }
             )
             ConnectionBar(socketState)
             VideoSection(
                 player = player, vm = vm, fileInfo = fileInfo,
-                isPlaying = player.isPlaying,
+                isPlaying = vm.isPlaying,
                 roomName = vm.roomName,
                 roomCode = roomCode,
                 onPlayPause = ::onPlayPause,
                 onOpenSettings = { playerSettingsOpen = true },
+                onFullscreen = { fullscreen = !fullscreen },
                 onPlayerViewReady = { playerViewRef = it },
                 modifier = Modifier.aspectRatio(16f / 9f)
             )
@@ -555,7 +583,7 @@ fun RoomScreen(
             onDismissRequest = {},
             shape = RoundedCornerShape(24.dp),
             containerColor = BrandCard,
-            title = { Text("از اتاق اخراج شدی", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            title = { Text("از اتاق اخراج شدی", color = BrandText, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text = { Text("مدیر اتاق تو را اخراج کرد.", color = BrandTextMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 GradientButton("باشه", onClick = { nav.popBackStack() }, modifier = Modifier.fillMaxWidth())
@@ -602,12 +630,8 @@ private fun RoomTopBar(
     vm: RoomViewModel,
     roomCode: String,
     socketState: SocketState,
-    fullscreen: Boolean,
-    onBack: () -> Unit,
-    onFullscreen: () -> Unit,
     onShare: () -> Unit,
     onCopy: () -> Unit,
-    onOptions: () -> Unit,
     onMembers: () -> Unit
 ) {
     val peers by vm.peers.collectAsState()
@@ -643,12 +667,20 @@ private fun RoomTopBar(
                 Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // قاب شیشه‌ای نام
+                // قاب شیشه‌ای نام — گرادیان ظریف + متن سفید
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    BrandPurple.copy(alpha = 0.18f),
+                                    Color(0xFF1A1A2E).copy(alpha = 0.5f),
+                                    BrandCyan.copy(alpha = 0.12f)
+                                )
+                            )
+                        )
+                        .padding(horizontal = 14.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("🎬", fontSize = 13.sp)
@@ -657,6 +689,7 @@ private fun RoomTopBar(
                         vm.roomName.ifBlank { "اتاق $roomCode" },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
+                        color = Color(0xFFEAF6FF),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = 130.dp)
@@ -723,16 +756,6 @@ private fun RoomTopBar(
             )
             Spacer(Modifier.width(6.dp))
 
-            // ── تمام‌صفحه ──
-            TopBarIconButton(
-                icon = if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                contentDescription = "تمام‌صفحه",
-                tint = Color(0xFFE879F9),
-                bg = Color(0xFFE879F9).copy(alpha = 0.12f),
-                onClick = onFullscreen
-            )
-            Spacer(Modifier.width(6.dp))
-
             // ── اعضا با آواتار + بج ──
             Row(
                 Modifier
@@ -766,16 +789,7 @@ private fun RoomTopBar(
                     )
                 }
             }
-            Spacer(Modifier.width(6.dp))
 
-            // ── گزینه‌ها ──
-            TopBarIconButton(
-                icon = Icons.Default.MoreVert,
-                contentDescription = "گزینه‌های بیشتر",
-                tint = BrandPurple,
-                bg = BrandPurple.copy(alpha = 0.12f),
-                onClick = onOptions
-            )
         }
     }
 }
@@ -794,6 +808,7 @@ private fun VideoSection(
     roomCode: String,
     onPlayPause: () -> Unit,
     onOpenSettings: () -> Unit,
+    onFullscreen: () -> Unit,
     onPlayerViewReady: (PlayerView) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -898,23 +913,45 @@ private fun VideoSection(
             )
         }
 
-        // ── دکمه تنظیمات پایین-گوشه ──
-        Box(
+        // ── دکمه‌های پایین-گوشه: تمام‌صفحه + تنظیمات حرفه‌ای ──
+        Row(
             Modifier
                 .align(Alignment.BottomEnd)
-                .padding(12.dp)
-                .size(42.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.Black.copy(alpha = 0.55f))
-                .clickable(onClick = onOpenSettings),
-            contentAlignment = Alignment.Center
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                Icons.Default.Settings,
-                "تنظیمات پلیر",
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
+            // تمام‌صفحه
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(onClick = onFullscreen),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Fullscreen,
+                    "تمام‌صفحه",
+                    tint = Color(0xFFE879F9),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            // تنظیمات (ترک صوتی/زیرنویس/رنگ)
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(onClick = onOpenSettings),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Settings,
+                    "تنظیمات پلیر",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         // واکنش‌های لحظه‌ای (فقط از طرف دیگران)
@@ -1049,7 +1086,10 @@ private fun ChatPanel(
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            items(messages, key = { it.id }) { m -> MessageRow(m, isMe = m.senderId.isNotBlank() && m.senderId == myId) }
+            items(messages, key = { it.id }) { m ->
+                val isMine = m.senderId.isNotBlank() && m.senderId == myId
+                MessageRow(m, isMe = isMine, seen = if (isMine) vm.isSeenByOthers(m.ts) else false)
+            }
             if (typing.isNotEmpty()) {
                 item { Text("✍️ ${typing.size} نفر در حال تایپ…", fontSize = 12.sp, color = BrandTextMuted) }
             }
@@ -1212,7 +1252,7 @@ private fun ChangeVideoDialog(onClose: () -> Unit, onConfirm: (String) -> Unit) 
         onDismissRequest = onClose,
         shape = RoundedCornerShape(24.dp),
         containerColor = BrandCard,
-        title = { Text("تغییر ویدیو") },
+        title = { Text("تغییر ویدیو", color = BrandText) },
         text = {
             Column {
                 HamTextField(
@@ -1320,7 +1360,7 @@ private fun PeerChip(p: WsPeer, isMe: Boolean) {
 }
 
 @Composable
-private fun MessageRow(m: WsMessage, isMe: Boolean) {
+private fun MessageRow(m: WsMessage, isMe: Boolean, seen: Boolean) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
@@ -1350,21 +1390,33 @@ private fun MessageRow(m: WsMessage, isMe: Boolean) {
             ) {
                 Column(Modifier.widthIn(max = 240.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (m.avatar.isNotBlank()) {
+                        if (m.avatar.isNotBlank() && !isMe) {
                             AvatarImage(avatarId = m.avatar, size = 14.dp)
                             Spacer(Modifier.width(4.dp))
                         }
-                        Text(m.name, fontSize = 11.sp, color = if (isMe) Color.White.copy(0.85f) else BrandCyan, fontWeight = FontWeight.Bold)
+                        Text(m.name, fontSize = 11.sp, color = if (isMe) Color.White.copy(0.9f) else BrandCyan, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(2.dp))
                     Text(m.text, fontSize = 14.sp, color = if (isMe) Color.White else BrandText)
                 }
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date(m.ts)),
-                    fontSize = 9.sp,
-                    color = if (isMe) Color.White.copy(0.6f) else BrandTextMuted
-                )
+                // زمان + تیک رسید مطالعه (فقط پیام خودم)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date(m.ts)),
+                        fontSize = 9.sp,
+                        color = if (isMe) Color.White.copy(0.6f) else BrandTextMuted
+                    )
+                    if (isMe) {
+                        Spacer(Modifier.height(2.dp))
+                        Icon(
+                            if (seen) Icons.Default.DoneAll else Icons.Default.Done,
+                            contentDescription = if (seen) "دیده شد" else "ارسال شد",
+                            tint = if (seen) Color(0xFF81C784) else Color.White.copy(0.55f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
             }
         }
     }

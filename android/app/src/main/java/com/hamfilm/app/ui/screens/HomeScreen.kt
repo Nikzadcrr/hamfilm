@@ -154,7 +154,7 @@ fun HomeScreen(nav: NavHostController) {
             } else {
                 // مهمان: دکمه‌های ورود/ثبت‌نام در کارت
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Text("حساب کاربری", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    Text("حساب کاربری", fontWeight = FontWeight.Black, fontSize = 14.sp, color = BrandText)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "با حساب وارد شو تا اشتراک و تیکت‌هات رو دنبال کنی — برای ساخت اتاق هم می‌تونی مهمان باشی.",
@@ -417,7 +417,7 @@ private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs:
         emoji,
         fontSize = 19.sp,
         modifier = modifier.graphicsLayer {
-            translationY = (-16 * floatY).dp.toPx()
+            translationY = (-16 * floatY, color = BrandText).dp.toPx()
             alpha = floatAlpha
         }
     )
@@ -454,7 +454,7 @@ fun PrimaryBigButton(
                     .background(Color.White.copy(alpha = 0.16f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(emoji, fontSize = 26.sp)
+                Text(emoji, fontSize = 26.sp, color = BrandText)
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
@@ -496,7 +496,7 @@ fun GlassNavButton(
                     .background(accent.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(emoji, fontSize = 22.sp)
+                Text(emoji, fontSize = 22.sp, color = BrandText)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {

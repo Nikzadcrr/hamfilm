@@ -25,7 +25,8 @@ data class WsMessage(
     val avatar: String = "",
     val text: String = "",
     val ts: Long = 0,
-    val system: Boolean = false
+    val system: Boolean = false,
+    val seenByOthers: Boolean = false // رسید مطالعه (تیک دوتایی)
 )
 
 /** وضعیت پخش هماهنگ — بک‌اند: state / correct */
@@ -114,6 +115,10 @@ class RoomSocket(
 
     private val _muted = MutableSharedFlow<Boolean>(extraBufferCapacity = 4)
     val muted: SharedFlow<Boolean> = _muted
+
+    /** رسید مطالعه: peerId → آخرین ts دیده‌شده */
+    private val _reads = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val reads: StateFlow<Map<String, Long>> = _reads
 
     private val _locked = MutableStateFlow(false)
     val locked: StateFlow<Boolean> = _locked
@@ -356,8 +361,19 @@ class RoomSocket(
                 _state.value = SocketState.Error(json.optString("text", "خطا"))
             }
 
+            // ── رسید مطالعه ──
+            "reads" -> {
+                val arr = json.optJSONArray("reads") ?: return
+                val map = mutableMapOf<String, Long>()
+                for (i in 0 until arr.length()) {
+                    val r = arr.optJSONObject(i) ?: continue
+                    map[r.optString("id")] = r.optLong("ts")
+                }
+                _reads.value = map
+            }
+
             // ── قابل نادیده‌گرفتن ──
-            "reads", "pin", "slowmode", "host", "presence" -> { }
+            "pin", "slowmode", "host", "presence" -> { }
         }
     }
 
@@ -440,6 +456,14 @@ class RoomSocket(
         send(JSONObject().apply {
             put("type", "rename")
             put("name", newName)
+        })
+    }
+
+    /** اعلام مطالعه پیام (رسید) — بک‌اند: read */
+    fun sendRead(ts: Long) {
+        send(JSONObject().apply {
+            put("type", "read")
+            put("ts", ts)
         })
     }
 

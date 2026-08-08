@@ -48,7 +48,7 @@ fun TicketsScreen(nav: NavHostController) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                Text("🎟️ تیکت‌های من", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                Text("🎟️ تیکت‌های من", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f, color = BrandText))
                 if (TokenStore.token.isNotBlank()) {
                     FilledIconButton(onClick = { showNew = true }, colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)) {
                         Icon(Icons.Default.Add, "تیکت جدید", tint = androidx.compose.ui.graphics.Color.White)
@@ -65,10 +65,10 @@ fun TicketsScreen(nav: NavHostController) {
                         GlassCard(Modifier.fillMaxWidth()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(t.subject, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
+                                    Text(t.subject, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, color = BrandText)
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(t.createdAt)),
+                                        SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault(, color = BrandText)).format(Date(t.createdAt)),
                                         color = BrandTextMuted,
                                         fontSize = 11.sp
                                     )
@@ -114,7 +114,7 @@ private fun NewTicketDialog(onClose: () -> Unit, onCreated: () -> Unit) {
         onDismissRequest = onClose,
         shape = RoundedCornerShape(24.dp),
         containerColor = BrandCard,
-        title = { Text("تیکت جدید") },
+        title = { Text("تیکت جدید", color = BrandText) },
         text = {
             Column {
                 HamTextField(subject, { subject = it }, "موضوع")
@@ -123,7 +123,7 @@ private fun NewTicketDialog(onClose: () -> Unit, onCreated: () -> Unit) {
                     value = body,
                     onValueChange = { body = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("توضیح مشکل") },
+                    label = { Text("توضیح مشکل", color = BrandText) },
                     minLines = 3,
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandCyan, unfocusedBorderColor = BrandCardLight)
@@ -185,14 +185,14 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
             Box(Modifier.fillMaxSize().statusBarsPadding(), contentAlignment = Alignment.Center) {
                 if (error != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = BrandDanger)
-                    TextButton(onClick = { nav.popBackStack() }) { Text("بازگشت") }
+                    TextButton(onClick = { nav.popBackStack() }) { Text("بازگشت", color = BrandText) }
                 } else CircularProgressIndicator(color = BrandCyan)
             }
         } else {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                    Text(d.subject, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1)
+                    Text(d.subject, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f, color = BrandText), maxLines = 1)
                     StatusBar(if (d.status == "open") "باز" else "بسته", if (d.status == "open") BrandGreen else BrandTextMuted)
                 }
                 LazyColumn(
@@ -212,10 +212,10 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
                                 Column {
                                     Text(if (r.isBot) "🤖 " + r.author else r.author, fontSize = 11.sp, color = if (r.isBot) BrandCyan else BrandTextMuted, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(4.dp))
-                                    Text(r.text, fontSize = 14.sp)
+                                    Text(r.text, fontSize = 14.sp, color = BrandText)
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date(r.ts)),
+                                        SimpleDateFormat("MM/dd HH:mm", Locale.getDefault(, color = BrandText)).format(Date(r.ts)),
                                         fontSize = 10.sp,
                                         color = BrandTextMuted
                                     )

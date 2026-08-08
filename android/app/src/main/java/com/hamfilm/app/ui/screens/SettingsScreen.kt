@@ -42,10 +42,10 @@ fun SettingsScreen(nav: NavHostController) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                Text("⚙️ تنظیمات سرور", style = MaterialTheme.typography.headlineSmall)
+                Text("⚙️ تنظیمات سرور", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
             Spacer(Modifier.height(16.dp))
-            Text("آدرس بک‌اند (API):", style = MaterialTheme.typography.labelLarge)
+            Text("آدرس بک‌اند (API, color = BrandText):", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(8.dp))
             HamTextField(
                 url, { url = it; testResult = null; saved = false },
@@ -53,7 +53,7 @@ fun SettingsScreen(nav: NavHostController) {
                 placeholder = "https://example.workers.dev/ یا https://vps.example.com/"
             )
             Spacer(Modifier.height(10.dp))
-            Text("💡 هم برای کلادفلر (workers.dev) و هم برای VPS قابل استفاده است — کافی است آدرس را عوض کنی.", fontSize = 12.sp, color = BrandTextMuted)
+            Text("💡 هم برای کلادفلر (workers.dev, color = BrandText) و هم برای VPS قابل استفاده است — کافی است آدرس را عوض کنی.", fontSize = 12.sp, color = BrandTextMuted)
 
             testResult?.let {
                 Spacer(Modifier.height(12.dp))
@@ -86,7 +86,7 @@ fun SettingsScreen(nav: NavHostController) {
                 if (testing) {
                     CircularProgressIndicator(Modifier.size(18.dp), color = BrandCyan, strokeWidth = 2.dp)
                 } else {
-                    Text("🧪 تست اتصال", fontWeight = FontWeight.Bold)
+                    Text("🧪 تست اتصال", fontWeight = FontWeight.Bold, color = BrandText)
                 }
             }
             Spacer(Modifier.height(12.dp))

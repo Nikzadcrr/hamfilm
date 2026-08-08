@@ -35,6 +35,7 @@ class RoomViewModel : ViewModel() {
     val unread = MutableStateFlow(0)
     var lastReadCount by mutableStateOf(0)
         private set
+    val reads = MutableStateFlow<Map<String, Long>>(emptyMap())
     val socketState = MutableStateFlow<SocketState>(SocketState.Idle)
 
     // پخش هم‌زمان (منبع حقیقت: سرور)
@@ -169,6 +170,7 @@ class RoomViewModel : ViewModel() {
             }
         }
         viewModelScope.launch { s.muted.collect { mutedInChat = it } }
+        viewModelScope.launch { s.reads.collect { reads.value = it } }
     }
 
     // کال‌بک‌هایی که پلیر (ExoPlayer) به ViewModel می‌دهد
@@ -239,8 +241,23 @@ class RoomViewModel : ViewModel() {
 
     val canControl: Boolean get() = isHost || controlMode == "all"
 
+    /** وضعیت پخش محلی پلیر (برای آیکون درست) — بدون ارسال به سرور */
+    fun onLocalPlayStateChange(playing: Boolean) {
+        isPlaying = playing
+    }
+
     fun markChatRead() {
         unread.value = 0
+        // اعلام رسید مطالعه به سرور (تیک دیده‌شدن برای بقیه)
+        val last = messages.value.lastOrNull { !it.system }
+        if (last != null && last.senderId != myId) {
+            socket?.sendRead(last.ts)
+        }
+    }
+
+    /** تیک دیده‌شدن: آیا پیام با این ts توسط حداقل یک نفر دیده شده؟ */
+    fun isSeenByOthers(ts: Long): Boolean {
+        return reads.value.values.any { it >= ts }
     }
 
     fun disconnect() {

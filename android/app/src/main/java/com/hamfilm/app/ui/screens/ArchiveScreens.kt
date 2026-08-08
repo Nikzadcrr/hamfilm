@@ -71,7 +71,7 @@ fun ArchiveScreen(nav: NavHostController) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
-                Text("🎞️ آرشیو فیلم‌ها", style = MaterialTheme.typography.headlineSmall)
+                Text("🎞️ آرشیو فیلم‌ها", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
 
             // جستجو
@@ -95,7 +95,7 @@ fun ArchiveScreen(nav: NavHostController) {
                     FilterChip(
                         selected = selectedGenre == null,
                         onClick = { selectedGenre = null },
-                        label = { Text("همه") }
+                        label = { Text("همه", color = BrandText) }
                     )
                 }
                 items(genres) { g ->
@@ -146,11 +146,11 @@ fun ArchiveScreen(nav: NavHostController) {
                                         contentScale = ContentScale.Crop
                                     )
                                 } else {
-                                    Text("🎬", fontSize = 28.sp)
+                                    Text("🎬", fontSize = 28.sp, color = BrandText)
                                 }
                             }
                             Spacer(Modifier.height(5.dp))
-                            Text(m.displayTitle, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(m.displayTitle, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = BrandText)
                             m.year?.takeIf { it > 0 }?.let {
                                 Text("$it", fontSize = 10.sp, color = BrandTextMuted)
                             }
@@ -191,7 +191,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (error != null) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("😕", fontSize = 40.sp)
+                        Text("😕", fontSize = 40.sp, color = BrandText)
                         Spacer(Modifier.height(10.dp))
                         Text(error!!, color = BrandDanger)
                         TextButton(onClick = { nav.popBackStack() }) { Text("بازگشت", color = BrandCyan) }
@@ -216,7 +216,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                             Box(
                                 Modifier.fillMaxSize().background(BrandGradientSoft),
                                 contentAlignment = Alignment.Center
-                            ) { Text("🎬", fontSize = 80.sp) }
+                            ) { Text("🎬", fontSize = 80.sp, color = BrandText) }
                         }
                         Box(
                             Modifier.fillMaxSize().background(
@@ -253,13 +253,13 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                                     )
                                 } else {
                                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("🎬", fontSize = 34.sp)
+                                        Text("🎬", fontSize = 34.sp, color = BrandText)
                                     }
                                 }
                             }
                             Spacer(Modifier.width(16.dp))
                             Column(Modifier.weight(1f).padding(top = 6.dp)) {
-                                Text(m.displayTitle, style = MaterialTheme.typography.headlineSmall)
+                                Text(m.displayTitle, style = MaterialTheme.typography.headlineSmall, color = BrandText)
                                 if (m.titleEn.isNotBlank()) {
                                     Text(m.titleEn, color = BrandTextMuted, fontSize = 12.sp)
                                 }
@@ -335,7 +335,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
 
                         // ---------- توضیحات ----------
                         Spacer(Modifier.height(18.dp))
-                        Text("درباره فیلم", style = MaterialTheme.typography.titleMedium)
+                        Text("درباره فیلم", style = MaterialTheme.typography.titleMedium, color = BrandText)
                         Spacer(Modifier.height(6.dp))
                         Text(
                             m.description.ifBlank { "توضیحی ثبت نشده است." },
@@ -363,7 +363,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandCyan)
                             ) {
-                                Text("🔗 پخش آنلاین (سایت)", fontWeight = FontWeight.Bold)
+                                Text("🔗 پخش آنلاین (سایت, color = BrandText)", fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -371,7 +371,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                         if (m.downloadLinks.isNotEmpty()) {
                             Spacer(Modifier.height(24.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("⬇️ لینک‌های دانلود", style = MaterialTheme.typography.titleMedium)
+                                Text("⬇️ لینک‌های دانلود", style = MaterialTheme.typography.titleMedium, color = BrandText)
                                 Spacer(Modifier.width(8.dp))
                                 Box(
                                     Modifier
@@ -441,8 +441,7 @@ private fun DownloadRow(link: com.hamfilm.app.data.model.DownloadLink, index: In
                 Text(
                     link.label.ifBlank { "لینک دانلود ${index + 1}" },
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.5.sp
-                )
+                    fontSize = 13.5.sp, color = BrandText)
                 if (size.isNotBlank()) {
                     Text(size, fontSize = 11.sp, color = BrandTextMuted)
                 }
@@ -461,6 +460,6 @@ private fun InfoBadge(text: String, modifier: Modifier = Modifier) {
             .padding(horizontal = 8.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, fontSize = 11.sp, maxLines = 1)
+        Text(text, fontSize = 11.sp, maxLines = 1, color = BrandText)
     }
 }

@@ -60,11 +60,11 @@ fun CreateRoomScreen(nav: NavHostController) {
                         .background(BrandGradientSoft),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🎬", fontSize = 26.sp)
+                    Text("🎬", fontSize = 26.sp, color = BrandText)
                 }
                 Spacer(Modifier.width(14.dp))
                 Column {
-                    Text("ساخت اتاق جدید", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    Text("ساخت اتاق جدید", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = BrandText)
                     Text("بعد از ساخت، یک کد و لینک دعوت یکتا می‌گیری", fontSize = 12.sp, color = BrandTextMuted)
                 }
             }
@@ -73,7 +73,7 @@ fun CreateRoomScreen(nav: NavHostController) {
 
             // ── کارت جزئیات اتاق ──
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("جزئیات اتاق", fontWeight = FontWeight.Black, fontSize = 15.sp)
+                Text("جزئیات اتاق", fontWeight = FontWeight.Black, fontSize = 15.sp, color = BrandText)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "لینک فیلم اختیاری است — می‌توانی بعداً داخل اتاق اضافه‌اش کنی.",
@@ -111,7 +111,7 @@ fun CreateRoomScreen(nav: NavHostController) {
                     items(SampleVideos) { url ->
                         AssistChip(
                             onClick = { videoUrl = url; urlError = null },
-                            label = { Text("ویدیو ${SampleVideos.indexOf(url) + 1}", fontSize = 12.sp) },
+                            label = { Text("ویدیو ${SampleVideos.indexOf(url, color = BrandText) + 1}", fontSize = 12.sp) },
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = BrandCardLight,
                                 labelColor = BrandText
@@ -231,10 +231,10 @@ fun JoinRoomScreen(nav: NavHostController) {
                     .background(BrandGradientSoft),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🔑", fontSize = 30.sp)
+                Text("🔑", fontSize = 30.sp, color = BrandText)
             }
             Spacer(Modifier.height(14.dp))
-            Text("ورود به اتاق", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+            Text("ورود به اتاق", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = BrandText)
             Text("کد ۶ رقمی یا لینک دعوتی که دوستت فرستاده را وارد کن", fontSize = 12.sp, color = BrandTextMuted, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp))
 
