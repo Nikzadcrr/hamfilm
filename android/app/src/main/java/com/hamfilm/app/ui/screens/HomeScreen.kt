@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.hamfilm.app.data.TokenStore
+import com.hamfilm.app.ui.components.AvatarImage
+import com.hamfilm.app.ui.components.GlassCard
+import com.hamfilm.app.ui.components.GradientButton
+import com.hamfilm.app.viewmodel.AuthViewModel
 import com.hamfilm.app.data.api.AppRepository
 import com.hamfilm.app.data.model.PublicSettings
 import com.hamfilm.app.ui.components.GradientBackground
@@ -97,6 +102,80 @@ fun HomeScreen(nav: NavHostController) {
                 style = MaterialTheme.typography.bodySmall,
                 color = BrandTextMuted
             )
+
+            // ── کارت حساب کاربری / ورود ──
+            Spacer(Modifier.height(18.dp))
+            val authVm = remember { AuthViewModel() }
+            val isLoggedIn by authVm.isLoggedIn
+            if (isLoggedIn) {
+                // لاگین شده: نمایش مشخصات + دسترسی سریع
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AvatarImage(avatarId = TokenStore.avatar, size = 46.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                TokenStore.name.ifBlank { "کاربر" },
+                                fontWeight = FontWeight.Black,
+                                fontSize = 15.sp,
+                                color = BrandText
+                            )
+                            Text("حساب کاربری فعال", fontSize = 11.sp, color = BrandGreen)
+                        }
+                        // خروج
+                        IconButton(onClick = {
+                            authVm.logout()
+                        }) {
+                            Icon(Icons.Default.Logout, "خروج از حساب", tint = BrandDanger, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GlassNavButton(
+                            emoji = "👤",
+                            title = "پروفایل",
+                            subtitle = "حساب",
+                            accent = BrandPurple,
+                            onClick = { nav.navigate(Routes.PROFILE) },
+                            modifier = Modifier.weight(1f),
+                            fillMaxWidth = false
+                        )
+                        GlassNavButton(
+                            emoji = "💎",
+                            title = "اشتراک",
+                            subtitle = "پلن‌ها",
+                            accent = BrandAmber,
+                            onClick = { nav.navigate(Routes.PLANS) },
+                            modifier = Modifier.weight(1f),
+                            fillMaxWidth = false
+                        )
+                    }
+                }
+            } else {
+                // مهمان: دکمه‌های ورود/ثبت‌نام در کارت
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Text("حساب کاربری", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "با حساب وارد شو تا اشتراک و تیکت‌هات رو دنبال کنی — برای ساخت اتاق هم می‌تونی مهمان باشی.",
+                        fontSize = 11.sp,
+                        color = BrandTextMuted
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GradientButton(
+                            text = "ورود",
+                            onClick = { nav.navigate(Routes.LOGIN) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        GradientButton(
+                            text = "ساخت حساب",
+                            onClick = { nav.navigate(Routes.REGISTER) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
 
             // اعلامیه (اگر فعال باشد)
             if (settings?.announcementActive == true && !settings?.announcement.isNullOrBlank()) {
@@ -176,28 +255,6 @@ fun HomeScreen(nav: NavHostController) {
                     accent = BrandGreen,
                     onClick = { nav.navigate(Routes.TICKETS) }
                 )
-            }
-
-            // ---------- بخش ورود / ساخت حساب ----------
-            Spacer(Modifier.height(34.dp))
-            AnimatedIn(600) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { nav.navigate(Routes.LOGIN) }) {
-                            Text("ورود", color = BrandCyan, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-                        Text("•", color = BrandTextMuted.copy(alpha = 0.5f), fontSize = 14.sp)
-                        TextButton(onClick = { nav.navigate(Routes.REGISTER) }) {
-                            Text("ساخت حساب", color = BrandCyan, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-                    }
-                    Text(
-                        "برای ساخت اتاق نیازی به حساب نداری — مهمان هم می‌تونی وارد شی",
-                        fontSize = 11.sp,
-                        color = BrandTextMuted,
-                        textAlign = TextAlign.Center
-                    )
-                }
             }
 
             Spacer(Modifier.height(28.dp))
@@ -419,11 +476,12 @@ fun GlassNavButton(
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    badge: String? = null
+    badge: String? = null,
+    fillMaxWidth: Boolean = true
 ) {
     Box(
         modifier = modifier
-            .fillMaxWidth()
+            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             .clip(RoundedCornerShape(20.dp))
             .background(BrandCard)
             .clickable(onClick = onClick)

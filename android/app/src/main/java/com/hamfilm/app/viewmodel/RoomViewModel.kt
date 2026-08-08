@@ -170,7 +170,9 @@ class RoomViewModel : ViewModel() {
     }
 
     fun sendReaction(emoji: String) {
+        // مثل سایت: ایموجی هم به‌صورت واکنش شناور می‌رود هم در چت ثبت می‌شود
         socket?.sendReaction(emoji)
+        socket?.sendChat(emoji)
         viewModelScope.launch { reactions.emit("شما" to emoji) }
     }
 

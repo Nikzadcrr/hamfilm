@@ -215,8 +215,59 @@ fun RoomScreen(
     }
 
     // ---------- چیدمان ----------
-    if (isLandscape) {
-        // حالت افقی: ویدیو سمت راست، چت کنارش (پنل چت همیشه باز)
+    if (fullscreen) {
+        // ═══ حالت تمام‌صفحه: فقط ویدیو + دکمه بستن شناور ═══
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            VideoSection(
+                player = player, vm = vm, fileInfo = fileInfo,
+                isPlaying = player.isPlaying,
+                onPlayPause = ::onPlayPause,
+                onPickFile = ::pickLocalFile,
+                onUrlDialog = { urlDialogOpen = true },
+                modifier = Modifier.fillMaxSize()
+            )
+            // دکمه بستن تمام‌صفحه — شناور بالا
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(10.dp)
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable { fullscreen = false },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.FullscreenExit,
+                    "خروج از تمام‌صفحه",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            // نام اتاق شناور بالا-چپ
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    vm.roomName.ifBlank { "اتاق $roomCode" },
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 160.dp)
+                )
+            }
+        }
+    } else if (isLandscape) {
+        // ═══ حالت افقی (غیر تمام‌صفحه): ویدیو سمت راست + چت کنارش ═══
         Row(Modifier.fillMaxSize().background(BrandBg)) {
             Column(Modifier.weight(1.5f).fillMaxHeight()) {
                 RoomTopBar(
@@ -258,7 +309,7 @@ fun RoomScreen(
             )
         }
     } else {
-        // حالت عمودی
+        // ═══ حالت عمودی ═══
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             RoomTopBar(
                 vm = vm, roomCode = roomCode, socketState = socketState,
