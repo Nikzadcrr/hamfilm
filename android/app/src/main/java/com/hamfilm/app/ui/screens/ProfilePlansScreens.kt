@@ -1,0 +1,194 @@
+package com.hamfilm.app.ui.screens
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import com.hamfilm.app.data.TokenStore
+import com.hamfilm.app.data.api.AppRepository
+import com.hamfilm.app.data.model.Plan
+import com.hamfilm.app.ui.components.*
+import com.hamfilm.app.ui.theme.*
+import kotlinx.coroutines.launch
+
+@Composable
+fun PlansScreen(nav: NavHostController) {
+    val repo = remember { AppRepository() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var plans by remember { mutableStateOf<List<Plan>>(emptyList()) }
+    var enabled by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
+    var buying by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val res = repo.plans()
+        plans = res.plans
+        enabled = res.enabled
+        loading = false
+    }
+
+    GradientBackground(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { nav.popBackStack() }) { Icon(androidx.compose.material.icons.Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                Text("💎 پلن‌های هم‌فیلم", style = MaterialTheme.typography.headlineSmall)
+            }
+            if (loading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = BrandCyan) }
+            } else if (!enabled) {
+                EmptyState("🔒", "اشتراک فعلاً غیرفعال است", "به‌زودی پلن‌های ویژه هم‌فیلم فعال می‌شوند.")
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(plans, key = { it.id }) { plan ->
+                        GlassCard(Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(plan.name, style = MaterialTheme.typography.titleLarge)
+                                        if (plan.isPopular) {
+                                            Spacer(Modifier.width(8.dp))
+                                            StatusBar("محبوب", BrandAmber)
+                                        }
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("${plan.usersPerRoom} نفر در اتاق • ${plan.durationDays} روز", color = BrandTextMuted, fontSize = 13.sp)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    if (plan.discountPercent > 0) {
+                                        Text(
+                                            "${plan.priceToman} تومان",
+                                            color = BrandTextMuted,
+                                            fontSize = 12.sp,
+                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                        )
+                                    }
+                                    Text("${plan.finalPriceToman} تومان", color = BrandCyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            plan.features.forEach { f ->
+                                Row(Modifier.padding(vertical = 2.dp)) {
+                                    Text("✅ ", fontSize = 13.sp)
+                                    Text(f, fontSize = 13.sp)
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            GradientButton(
+                                text = if (buying == plan.id) "در حال اتصال به درگاه…" else "خرید اشتراک",
+                                loading = buying == plan.id,
+                                onClick = {
+                                    buying = plan.id
+                                    scope.launch {
+                                        try {
+                                            val res = repo.checkout(plan.id)
+                                            if (res.paymentUrl.isNotBlank()) {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(res.paymentUrl)))
+                                            }
+                                        } catch (e: Exception) { /* خطا */ }
+                                        buying = null
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen(nav: NavHostController) {
+    val repo = remember { AppRepository() }
+    var sub by remember { mutableStateOf<com.hamfilm.app.data.model.SubscriptionStatus?>(null) }
+
+    LaunchedEffect(Unit) {
+        sub = if (TokenStore.token.isNotBlank()) repo.mySubscription() else null
+    }
+
+    GradientBackground(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(30.dp))
+            AvatarChip(TokenStore.avatar, size = 84.dp)
+            Spacer(Modifier.height(12.dp))
+            Text(TokenStore.name.ifBlank { "مهمان" }, style = MaterialTheme.typography.titleLarge)
+            if (TokenStore.email.isNotBlank()) {
+                Text(TokenStore.email, color = BrandTextMuted, fontSize = 13.sp)
+            }
+            Spacer(Modifier.height(14.dp))
+            val active = sub?.active == true
+            StatusBar(
+                if (active) "اشتراک فعال: ${sub?.planName}" else "بدون اشتراک فعال",
+                if (active) BrandGreen else BrandTextMuted
+            )
+
+            Spacer(Modifier.height(30.dp))
+            GlassCard(Modifier.fillMaxWidth()) {
+                MenuRow("🎟️ تیکت‌های پشتیبانی") { nav.navigate(Routes.TICKETS) }
+                HorizontalDivider(color = BrandCardLight)
+                MenuRow("💎 پلن‌ها و اشتراک") { nav.navigate(Routes.PLANS) }
+                HorizontalDivider(color = BrandCardLight)
+                MenuRow("🎬 آرشیو فیلم‌ها") { nav.navigate(Routes.ARCHIVE) }
+                HorizontalDivider(color = BrandCardLight)
+                MenuRow("⚙️ تنظیمات سرور") { nav.navigate(Routes.SETTINGS) }
+                HorizontalDivider(color = BrandCardLight)
+                MenuRow("📖 راهنمای استفاده") {
+                    TokenStore.onboarded = false
+                    nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+            if (TokenStore.token.isNotBlank()) {
+                OutlinedButton(
+                    onClick = {
+                        TokenStore.clear()
+                        nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandDanger)
+                ) {
+                    Text("خروج از حساب", fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun MenuRow(title: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+        Text("‹", color = BrandTextMuted, fontSize = 18.sp)
+    }
+}

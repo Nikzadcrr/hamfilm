@@ -1,0 +1,20 @@
+{
+  "name": "hamfilm-vps",
+  "version": "1.0.0",
+  "description": "بک‌اند هم‌فیلم برای VPS — REST + WebSocket (هم‌پروتکل با نسخه Cloudflare)",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "seed": "node src/db.js --seed"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.0"
+  }
+}
