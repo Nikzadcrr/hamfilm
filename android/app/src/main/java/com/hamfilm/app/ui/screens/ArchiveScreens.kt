@@ -37,6 +37,7 @@ import android.net.Uri
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Brush
 
 @Composable
 fun ArchiveScreen(nav: NavHostController) {

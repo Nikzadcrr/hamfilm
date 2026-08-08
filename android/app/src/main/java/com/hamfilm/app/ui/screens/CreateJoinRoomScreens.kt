@@ -108,8 +108,8 @@ fun CreateRoomScreen(nav: NavHostController) {
                 Spacer(Modifier.height(8.dp))
                 HamTextField(
                     name, { name = it },
-                    "مثلاً: سینمای پنجشنبه شب",
-                    label = "نام اتاق"
+                    label = "نام اتاق",
+                    placeholder = "مثلاً: سینمای پنجشنبه شب"
                 )
             }
 
@@ -457,7 +457,7 @@ fun AnimatedIcon(
                 scaleY = pulse
                 alpha = 0.5f + glow * 0.5f
             }
-            .background(gradient.copy(alpha = 0.25f), CircleShape)
+            .background(BrandPurple.copy(alpha = 0.22f), CircleShape)
     )
     Box(
         Modifier

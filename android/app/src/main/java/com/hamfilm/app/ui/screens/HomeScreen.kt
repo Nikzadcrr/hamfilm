@@ -388,7 +388,7 @@ private fun AnimatedIconBadge(
             .graphicsLayer { scaleX = pulse; scaleY = pulse }
             .background(accent.copy(alpha = 0.22f), CircleShape),
         contentAlignment = Alignment.Center
-    )
+    ) { }
     Box(
         Modifier
             .size(size)
