@@ -91,7 +91,7 @@ fun RoomScreen(
     val player = remember {
         ExoPlayer.Builder(context).build().apply { repeatMode = Player.REPEAT_MODE_OFF }
     }
-    val playerViewRef = remember { java.lang.ref.WeakReference<PlayerView>(null) }
+    var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     DisposableEffect(player) { onDispose { player.release() } }
 
     // ---------- اتصال ----------
@@ -192,6 +192,12 @@ fun RoomScreen(
         filePicker.launch(arrayOf("video/*", "audio/*"))
     }
 
+    // state تنظیمات پلیر
+    var playerSettingsOpen by remember { mutableStateOf(false) }
+    var subtitleUri by remember { mutableStateOf<Uri?>(null) }
+    var subtitleEnabled by remember { mutableStateOf(false) }
+    var subtitleColorIndex by remember { mutableStateOf(0) }
+
     // انتخاب فایل زیرنویس
     val subtitlePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -229,10 +235,6 @@ fun RoomScreen(
     var membersOpen by remember { mutableStateOf(false) }
     var optionsOpen by remember { mutableStateOf(false) }
     var urlDialogOpen by remember { mutableStateOf(false) }
-    var playerSettingsOpen by remember { mutableStateOf(false) }
-    var subtitleUri by remember { mutableStateOf<Uri?>(null) }
-    var subtitleEnabled by remember { mutableStateOf(false) }
-    var subtitleColorIndex by remember { mutableStateOf(0) }
     val listState = rememberLazyListState()
     var typingJob by remember { mutableStateOf<Job?>(null) }
 
@@ -256,7 +258,7 @@ fun RoomScreen(
     fun applySubtitleColor(index: Int) {
         subtitleColorIndex = index
         try {
-            val playerView = playerViewRef.get()
+            val playerView = playerViewRef
             if (playerView != null) {
                 val stv = androidx.media3.ui.SubtitleView(context)
                 stv.setStyle(com.hamfilm.app.ui.components.buildCaptionStyle(index))
@@ -807,7 +809,7 @@ private fun VideoSection(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                }
+                }.also { playerViewRef = it }
             },
             modifier = Modifier.fillMaxSize()
         )

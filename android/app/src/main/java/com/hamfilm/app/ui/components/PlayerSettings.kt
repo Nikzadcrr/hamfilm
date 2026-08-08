@@ -42,6 +42,7 @@ val SubtitleColors = listOf(
  *  - انتخاب فایل زیرنویس (.srt / .vtt)
  *  - تغییر رنگ زیرنویس
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSettingsSheet(
     player: ExoPlayer?,
@@ -80,7 +81,7 @@ fun PlayerSettingsSheet(
                     val format = group.getTrackFormat(0)
                     val lang = format.language?.takeIf { it.isNotBlank() } ?: "ترک ${gi + 1}"
                     val selected = player?.trackSelectionParameters?.overrides?.any {
-                        it.trackGroup == group
+                        it.mediaTrackGroup == group.mediaTrackGroup
                     } == true
                     Row(
                         Modifier
@@ -92,7 +93,7 @@ fun PlayerSettingsSheet(
                                 player?.trackSelectionParameters = player.trackSelectionParameters
                                     .buildUpon()
                                     .clearOverrides()
-                                    .addOverride(TrackSelectionOverride(group, 0))
+                                    .addOverride(TrackSelectionOverride(group.mediaTrackGroup, 0))
                                     .build()
                             }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
