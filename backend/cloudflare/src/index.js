@@ -196,7 +196,7 @@ async function handleRequest(request, env) {
     const auth = await currentUser(request, env);
     if (!auth.user) return err('ابتدا وارد حساب شوید', 401);
     const tickets = await all(env, 'SELECT id, subject, status, created_at, last_reply_at FROM tickets WHERE user_id = ? ORDER BY last_reply_at DESC', auth.user.id);
-    return json({ tickets: tickets.map(t => ({ id: t.id, subject: t.subject, status: t.status, created_at: t.created_at, last_reply_at: t.last_reply_at })) });
+    return json({ tickets: tickets.map(t => ({ id: t.id, subject: t.subject, status: t.status, createdAt: t.created_at, lastReplyAt: t.last_reply_at })) });
   }
 
   if (path === '/api/support/tickets' && method === 'POST') {
@@ -208,7 +208,7 @@ async function handleRequest(request, env) {
     const now = Date.now();
     await q(env, 'INSERT INTO tickets (id, user_id, subject, status, created_at, last_reply_at) VALUES (?, ?, ?, ?, ?, ?)', id, auth.user.id, subject, 'open', now, now);
     await q(env, 'INSERT INTO ticket_replies (id, ticket_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)', uid(20), id, auth.user.name, text, now);
-    return json({ id, subject, status: 'open', replies: [{ id: uid(20), author: auth.user.name, body: text, created_at: now }] }, 201);
+    return json({ id, subject, status: 'open', replies: [{ id: uid(20), author: auth.user.name, body: text, createdAt: now }] }, 201);
   }
 
   if (path.match(/^\/api\/support\/tickets\/[\w-]+\/reply$/) && method === 'POST') {
@@ -223,7 +223,7 @@ async function handleRequest(request, env) {
     await q(env, 'INSERT INTO ticket_replies (id, ticket_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)', rid, id, auth.user.name, text || '', Date.now());
     await q(env, 'UPDATE tickets SET last_reply_at = ? WHERE id = ?', Date.now(), id);
     const replies = await all(env, 'SELECT id, author, body, created_at FROM ticket_replies WHERE ticket_id = ? ORDER BY created_at', id);
-    return json({ id, subject: ticket.subject, status: ticket.status, replies: replies.map(r => ({ id: r.id, author: r.author, body: r.body, created_at: r.created_at })) });
+    return json({ id, subject: ticket.subject, status: ticket.status, replies: replies.map(r => ({ id: r.id, author: r.author, body: r.body, createdAt: r.created_at })) });
   }
 
   if (path.startsWith('/api/support/tickets/') && method === 'GET') {
@@ -233,7 +233,7 @@ async function handleRequest(request, env) {
     const ticket = await first(env, 'SELECT * FROM tickets WHERE id = ?', id);
     if (!ticket || ticket.user_id !== auth.user.id) return err('تیکت یافت نشد', 404);
     const replies = await all(env, 'SELECT id, author, body, created_at FROM ticket_replies WHERE ticket_id = ? ORDER BY created_at', id);
-    return json({ id, subject: ticket.subject, status: ticket.status, replies: replies.map(r => ({ id: r.id, author: r.author, body: r.body, created_at: r.created_at })) });
+    return json({ id, subject: ticket.subject, status: ticket.status, replies: replies.map(r => ({ id: r.id, author: r.author, body: r.body, createdAt: r.created_at })) });
   }
 
   // ================== اشتراک ==================
@@ -243,7 +243,7 @@ async function handleRequest(request, env) {
     const sub = await first(env, "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > ?", auth.user.id, Date.now());
     if (!sub) return json({ active: false });
     const plan = await first(env, 'SELECT name FROM plans WHERE id = ?', sub.plan_id);
-    return json({ active: true, plan_name: plan?.name || '', expires_at: sub.expires_at });
+    return json({ active: true, planName: plan?.name || '', expiresAt: sub.expires_at });
   }
 
   if (path === '/api/subscriptions/checkout' && method === 'POST') {
@@ -255,7 +255,7 @@ async function handleRequest(request, env) {
     const orderId = uid(24);
     const callback = `${url.origin}/api/payments/verify?order=${orderId}`;
     const paymentUrl = `https://www.zarinpal.com/pg/StartPay/${orderId}?callback=${encodeURIComponent(callback)}`;
-    return json({ payment_url: paymentUrl, order_id: orderId });
+    return json({ paymentUrl, orderId });
   }
 
   // ================== پنل ادمین ==================
@@ -386,18 +386,20 @@ async function currentUser(request, env) {
 
 function mapMovie(m) {
   return {
-    slug: m.slug, title: m.title, title_en: m.title_en, title_fa: m.title_fa, year: m.year,
+    slug: m.slug, title: m.title, titleEn: m.title_en, titleFa: m.title_fa, year: m.year,
     genres: JSON.parse(m.genres || '[]'), country: m.country, language: m.language,
-    duration_min: m.duration_min, age_rating: m.age_rating, imdb_rating: m.imdb_rating, imdb_id: m.imdb_id,
+    durationMin: m.duration_min, ageRating: m.age_rating, imdbRating: m.imdb_rating, imdbId: m.imdb_id,
     satisfaction: m.satisfaction, views: m.views, description: m.description,
-    cover_url: m.cover_url, source_url: m.source_url, featured: m.featured === 1
+    coverUrl: m.cover_url, sourceUrl: m.source_url,
+    downloadLinks: JSON.parse(m.download_links || '[]'), trailerUrl: m.trailer_url || '',
+    featured: m.featured === 1
   };
 }
 function mapPlan(p) {
   return {
-    id: p.id, name: p.name, price_toman: p.price_toman, discount_percent: p.discount_percent,
-    final_price_toman: p.final_price_toman, users_per_room: p.users_per_room, duration_days: p.duration_days,
-    features: JSON.parse(p.features || '[]'), is_popular: p.is_popular === 1
+    id: p.id, name: p.name, priceToman: p.price_toman, discountPercent: p.discount_percent,
+    finalPriceToman: p.final_price_toman, usersPerRoom: p.users_per_room, durationDays: p.duration_days,
+    features: JSON.parse(p.features || '[]'), isPopular: p.is_popular === 1
   };
 }
 

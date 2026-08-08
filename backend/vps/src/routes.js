@@ -6,16 +6,18 @@ import { signToken, verifyToken, hashPassword, verifyPassword, uid, roomCode } f
 const r = Router();
 
 const mapMovie = m => ({
-  slug: m.slug, title: m.title, title_en: m.title_en, title_fa: m.title_fa, year: m.year,
+  slug: m.slug, title: m.title, titleEn: m.title_en, titleFa: m.title_fa, year: m.year,
   genres: JSON.parse(m.genres || '[]'), country: m.country, language: m.language,
-  duration_min: m.duration_min, age_rating: m.age_rating, imdb_rating: m.imdb_rating, imdb_id: m.imdb_id,
+  durationMin: m.duration_min, ageRating: m.age_rating, imdbRating: m.imdb_rating, imdbId: m.imdb_id,
   satisfaction: m.satisfaction, views: m.views, description: m.description,
-  cover_url: m.cover_url, source_url: m.source_url, featured: m.featured === 1
+  coverUrl: m.cover_url, sourceUrl: m.source_url,
+  downloadLinks: JSON.parse(m.download_links || '[]'), trailerUrl: m.trailer_url || '',
+  featured: m.featured === 1
 });
 const mapPlan = p => ({
-  id: p.id, name: p.name, price_toman: p.price_toman, discount_percent: p.discount_percent,
-  final_price_toman: p.final_price_toman, users_per_room: p.users_per_room, duration_days: p.duration_days,
-  features: JSON.parse(p.features || '[]'), is_popular: p.is_popular === 1
+  id: p.id, name: p.name, priceToman: p.price_toman, discountPercent: p.discount_percent,
+  finalPriceToman: p.final_price_toman, usersPerRoom: p.users_per_room, durationDays: p.duration_days,
+  features: JSON.parse(p.features || '[]'), isPopular: p.is_popular === 1
 });
 
 // ---------- کاربر جاری ----------
@@ -174,7 +176,7 @@ r.get('/subscriptions/me', (req, res) => {
   const sub = db.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > ?").get(auth.user.id, Date.now());
   if (!sub) return res.json({ active: false });
   const plan = db.prepare('SELECT name FROM plans WHERE id = ?').get(sub.plan_id);
-  res.json({ active: true, plan_name: plan?.name || '', expires_at: sub.expires_at });
+  res.json({ active: true, planName: plan?.name || '', expiresAt: sub.expires_at });
 });
 r.post('/subscriptions/checkout', (req, res) => {
   const { planId } = req.body || {};
@@ -183,7 +185,7 @@ r.post('/subscriptions/checkout', (req, res) => {
   const orderId = uid(24);
   // نمونه Zarinpal — توکن مرچنت واقعی را از env بخوان
   const callback = `${req.protocol}://${req.get('host')}/api/payments/verify?order=${orderId}`;
-  res.json({ payment_url: `https://www.zarinpal.com/pg/StartPay/${orderId}?callback=${encodeURIComponent(callback)}`, order_id: orderId });
+  res.json({ paymentUrl: `https://www.zarinpal.com/pg/StartPay/${orderId}?callback=${encodeURIComponent(callback)}`, orderId });
 });
 
 // ================== پنل ادمین ==================

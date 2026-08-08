@@ -30,6 +30,13 @@ data class PublicSettings(
 )
 
 // ---------- فیلم‌ها ----------
+data class DownloadLink(
+    val label: String = "",
+    val url: String = "",
+    val quality: String = "",
+    val size: String = ""
+)
+
 data class Movie(
     val slug: String = "",
     val title: String = "",
@@ -48,6 +55,8 @@ data class Movie(
     val description: String = "",
     @SerializedName("cover_url") val coverUrl: String = "",
     @SerializedName("source_url") val sourceUrl: String = "",
+    @SerializedName("download_links") val downloadLinks: List<DownloadLink> = emptyList(),
+    @SerializedName("trailer_url") val trailerUrl: String = "",
     val featured: Boolean = false
 ) {
     val displayTitle: String get() = titleFa.ifBlank { title }

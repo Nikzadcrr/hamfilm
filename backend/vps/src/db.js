@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS movies (
   year INTEGER DEFAULT 0, genres TEXT DEFAULT '[]', country TEXT DEFAULT '', language TEXT DEFAULT '',
   duration_min INTEGER, age_rating TEXT DEFAULT '', imdb_rating REAL, imdb_id TEXT DEFAULT '',
   satisfaction INTEGER, views INTEGER DEFAULT 0, description TEXT DEFAULT '',
-  cover_url TEXT DEFAULT '', source_url TEXT DEFAULT '', featured INTEGER DEFAULT 0
+  cover_url TEXT DEFAULT '', source_url TEXT DEFAULT '',
+  download_links TEXT DEFAULT '[]', trailer_url TEXT DEFAULT '', featured INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS genres (name TEXT PRIMARY KEY, count INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS plans (

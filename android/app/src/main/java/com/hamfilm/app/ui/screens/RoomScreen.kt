@@ -352,40 +352,71 @@ private fun RoomTopBar(
     onOptions: () -> Unit,
     onMembers: () -> Unit
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onBack) { Icon(Icons.Default.ArrowForward, "خروج", tint = BrandTextMuted) }
-        Column(Modifier.weight(1f)) {
-            Text(
-                vm.roomName.ifBlank { "اتاق $roomCode" },
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("کد: $roomCode", fontSize = 11.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(8.dp))
-                when (socketState) {
-                    is SocketState.Connected -> StatusBar("متصل", BrandGreen)
-                    is SocketState.Connecting -> StatusBar("در حال اتصال…", BrandAmber)
-                    else -> StatusBar("قطع", BrandDanger)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowForward, "خروج", tint = BrandTextMuted) }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    vm.roomName.ifBlank { "اتاق $roomCode" },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                // کد اتاق — برجسته و قابل کپی
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(BrandCyan.copy(alpha = 0.13f))
+                            .clickable(onClick = onCopy)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("$roomCode", fontSize = 12.sp, color = BrandCyan, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Default.ContentCopy, "کپی", tint = BrandCyan, modifier = Modifier.size(11.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    when (socketState) {
+                        is SocketState.Connected -> StatusBar("متصل", BrandGreen)
+                        is SocketState.Connecting -> StatusBar("در حال اتصال…", BrandAmber)
+                        else -> StatusBar("قطع", BrandDanger)
+                    }
                 }
             }
         }
-        IconButton(onClick = onCopy) { Icon(Icons.Default.ContentCopy, "کپی کد", tint = BrandTextMuted, modifier = Modifier.size(19.dp)) }
-        IconButton(onClick = onShare) { Icon(Icons.Default.Share, "دعوت", tint = BrandTextMuted, modifier = Modifier.size(19.dp)) }
-        IconButton(onClick = onMembers) { Icon(Icons.Default.People, "اعضا", tint = BrandText, modifier = Modifier.size(20.dp)) }
-        IconButton(onClick = onFullscreen) {
-            Icon(
+        // ---------- ردیف دکمه‌های آیکون‌دار ----------
+        Row(
+            Modifier.fillMaxWidth().padding(top = 2.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TopIconButton(Icons.Default.Share, "دعوت", onShare)
+            TopIconButton(Icons.Default.People, "اعضا", onMembers)
+            TopIconButton(
                 if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                 "تمام‌صفحه",
-                tint = BrandText,
-                modifier = Modifier.size(20.dp)
+                onFullscreen
             )
+            TopIconButton(Icons.Default.MoreVert, "بیشتر", onOptions)
         }
-        IconButton(onClick = onOptions) { Icon(Icons.Default.MoreVert, "بیشتر", tint = BrandText, modifier = Modifier.size(20.dp)) }
+    }
+}
+
+/** دکمه آیکون‌دار با برچسب */
+@Composable
+private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, label, tint = BrandText, modifier = Modifier.size(21.dp))
+        Spacer(Modifier.height(2.dp))
+        Text(label, fontSize = 9.5.sp, color = BrandTextMuted)
     }
 }
 

@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS movies (
   description TEXT DEFAULT '',
   cover_url TEXT DEFAULT '',
   source_url TEXT DEFAULT '',
+  download_links TEXT DEFAULT '[]',
+  trailer_url TEXT DEFAULT '',
   featured INTEGER DEFAULT 0
 );
 

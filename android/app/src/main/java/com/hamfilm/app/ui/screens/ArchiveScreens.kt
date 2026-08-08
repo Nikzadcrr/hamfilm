@@ -32,6 +32,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.foundation.lazy.items
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun ArchiveScreen(nav: NavHostController) {
@@ -166,6 +171,7 @@ fun ArchiveScreen(nav: NavHostController) {
 @Composable
 fun MovieDetailScreen(nav: NavHostController, slug: String) {
     val repo = remember { AppRepository() }
+    val context = LocalContext.current
     var movie by remember { mutableStateOf<Movie?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -181,21 +187,39 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
         val m = movie
         if (m == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (error != null) Text(error!!, color = BrandDanger) else CircularProgressIndicator(color = BrandCyan)
+                if (error != null) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("😕", fontSize = 40.sp)
+                        Spacer(Modifier.height(10.dp))
+                        Text(error!!, color = BrandDanger)
+                        TextButton(onClick = { nav.popBackStack() }) { Text("بازگشت", color = BrandCyan) }
+                    }
+                } else {
+                    CircularProgressIndicator(color = BrandCyan)
+                }
             }
         } else {
             LazyColumn(Modifier.fillMaxSize().statusBarsPadding()) {
+                // ---------- بک‌دراپ ----------
                 item {
-                    Box(Modifier.fillMaxWidth().height(280.dp)) {
+                    Box(Modifier.fillMaxWidth().height(300.dp)) {
                         if (m.coverUrl.isNotBlank()) {
-                            AsyncImage(model = m.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            AsyncImage(
+                                model = m.coverUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                         } else {
-                            Box(Modifier.fillMaxSize().background(BrandGradientSoft), contentAlignment = Alignment.Center) { Text("🎬", fontSize = 70.sp) }
+                            Box(
+                                Modifier.fillMaxSize().background(BrandGradientSoft),
+                                contentAlignment = Alignment.Center
+                            ) { Text("🎬", fontSize = 80.sp) }
                         }
                         Box(
                             Modifier.fillMaxSize().background(
-                                androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    listOf(Color.Transparent, BrandBg)
+                                Brush.verticalGradient(
+                                    listOf(Color(0x33000000), BrandBg)
                                 )
                             )
                         )
@@ -204,34 +228,166 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                         }
                     }
                 }
+
+                // ---------- اطلاعات اصلی ----------
                 item {
                     Column(Modifier.padding(horizontal = 20.dp)) {
-                        Text(m.displayTitle, style = MaterialTheme.typography.headlineMedium)
-                        if (m.titleEn.isNotBlank()) Text(m.titleEn, color = BrandTextMuted, fontSize = 13.sp)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            m.year.takeIf { it > 0 }?.let { InfoBadge("📅 $it") }
-                            m.country.takeIf { it.isNotBlank() }?.let { InfoBadge("🌍 $it") }
-                            m.durationMin?.let { InfoBadge("⏱️ ${it} دقیقه") }
-                            m.imdbRating?.let { InfoBadge("⭐ $it") }
-                        }
-                        if (m.genres.isNotEmpty()) {
-                            Spacer(Modifier.height(10.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                m.genres.take(4).forEach { g -> InfoBadge(g) }
+                        Row(verticalAlignment = Alignment.Top) {
+                            // پوستر کوچک
+                            Box(
+                                Modifier
+                                    .width(104.dp)
+                                    .height(150.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(BrandCardLight)
+                                    .shadow(10.dp, RoundedCornerShape(16.dp))
+                            ) {
+                                if (m.coverUrl.isNotBlank()) {
+                                    AsyncImage(
+                                        model = m.coverUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("🎬", fontSize = 34.sp)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column(Modifier.weight(1f).padding(top = 6.dp)) {
+                                Text(m.displayTitle, style = MaterialTheme.typography.headlineSmall)
+                                if (m.titleEn.isNotBlank()) {
+                                    Text(m.titleEn, color = BrandTextMuted, fontSize = 12.sp)
+                                }
+                                Spacer(Modifier.height(10.dp))
+
+                                // امتیازها
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    m.imdbRating?.let {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("⭐ $it", color = BrandAmber, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                            Text("IMDb", fontSize = 10.sp, color = BrandTextMuted)
+                                        }
+                                    }
+                                    m.satisfaction?.let {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("😍 %$it", color = BrandGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                            Text("رضایت", fontSize = 10.sp, color = BrandTextMuted)
+                                        }
+                                    }
+                                    if (m.views > 0) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("👁 ${m.views}", color = BrandText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                            Text("بازدید", fontSize = 10.sp, color = BrandTextMuted)
+                                        }
+                                    }
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+                                // نوار رضایت
+                                m.satisfaction?.let { sat ->
+                                    LinearProgressIndicator(
+                                        progress = { sat / 100f },
+                                        modifier = Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)),
+                                        color = BrandGreen,
+                                        trackColor = BrandCardLight
+                                    )
+                                }
                             }
                         }
-                        Spacer(Modifier.height(14.dp))
-                        Text(m.description.ifBlank { "توضیحی ثبت نشده است." }, style = MaterialTheme.typography.bodyMedium, color = BrandTextMuted)
-                        Spacer(Modifier.height(20.dp))
 
+                        // ---------- متا ----------
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            m.year.takeIf { it > 0 }?.let { InfoBadge("📅 $it", Modifier.weight(1f)) }
+                            m.country.takeIf { it.isNotBlank() }?.let { InfoBadge("🌍 $it", Modifier.weight(1f)) }
+                            m.durationMin?.let { InfoBadge("⏱ ${it} دقیقه", Modifier.weight(1f)) }
+                            m.ageRating.takeIf { it.isNotBlank() }?.let { InfoBadge("🔞 $it", Modifier.weight(1f)) }
+                        }
+                        if (m.language.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            InfoBadge("🗣 $m.language", Modifier.weight(1f))
+                        }
+
+                        // ---------- ژانرها ----------
+                        if (m.genres.isNotEmpty()) {
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                m.genres.forEach { g ->
+                                    Box(
+                                        Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(BrandPurple.copy(alpha = 0.15f))
+                                            .padding(horizontal = 12.dp, vertical = 5.dp)
+                                    ) {
+                                        Text(g, fontSize = 12.sp, color = BrandPurple)
+                                    }
+                                }
+                            }
+                        }
+
+                        // ---------- توضیحات ----------
+                        Spacer(Modifier.height(18.dp))
+                        Text("درباره فیلم", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            m.description.ifBlank { "توضیحی ثبت نشده است." },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = BrandTextMuted,
+                            lineHeight = 22.sp
+                        )
+
+                        // ---------- دکمه‌ها ----------
+                        Spacer(Modifier.height(20.dp))
                         GradientButton(
                             text = "▶ پخش در اتاق",
-                            onClick = { nav.navigate(Routes.CREATE) }
+                            onClick = { nav.navigate(Routes.CREATE) },
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Text("با زدن دکمه بالا، یک اتاق جدید با این فیلم می‌سازی و کدش را برای دوستانت می‌فرستی.", fontSize = 12.sp, color = BrandTextMuted)
-                        Spacer(Modifier.height(24.dp))
+                        if (m.sourceUrl.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(m.sourceUrl))
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandCyan)
+                            ) {
+                                Text("🔗 پخش آنلاین (سایت)", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // ---------- لینک‌های دانلود ----------
+                        if (m.downloadLinks.isNotEmpty()) {
+                            Spacer(Modifier.height(24.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("⬇️ لینک‌های دانلود", style = MaterialTheme.typography.titleMedium)
+                                Spacer(Modifier.width(8.dp))
+                                Box(
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(BrandCyan.copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text("${m.downloadLinks.size} لینک", fontSize = 10.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            m.downloadLinks.forEachIndexed { idx, link ->
+                                DownloadRow(link = link, index = idx)
+                                Spacer(Modifier.height(8.dp))
+                            }
+                        }
+
+                        Spacer(Modifier.height(26.dp))
                     }
                 }
             }
@@ -239,14 +395,67 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
     }
 }
 
+// ---------- ردیف لینک دانلود ----------
 @Composable
-private fun InfoBadge(text: String) {
+private fun DownloadRow(link: com.hamfilm.app.data.model.DownloadLink, index: Int) {
+    val context = LocalContext.current
     Box(
         Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandCard)
+            .clickable {
+                if (link.url.isNotBlank()) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
+                }
+            }
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // آیکون کیفیت
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (link.quality.contains("4K") || link.quality.contains("1080"))
+                            BrandGreen.copy(alpha = 0.15f)
+                        else BrandCyan.copy(alpha = 0.13f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    link.quality.ifBlank { "HD" },
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (link.quality.contains("4K") || link.quality.contains("1080")) BrandGreen else BrandCyan
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    link.label.ifBlank { "لینک دانلود ${index + 1}" },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.5.sp
+                )
+                if (link.size.isNotBlank()) {
+                    Text(link.size, fontSize = 11.sp, color = BrandTextMuted)
+                }
+            }
+            Icon(Icons.Default.Download, "دانلود", tint = BrandCyan, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun InfoBadge(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier
             .clip(RoundedCornerShape(10.dp))
             .background(BrandCardLight)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(text, fontSize = 11.sp)
+        Text(text, fontSize = 11.sp, maxLines = 1)
     }
 }
