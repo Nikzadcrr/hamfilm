@@ -856,13 +856,15 @@ private fun shareRoomCode(context: Context, code: String) {
 }
 
 private fun Context.queryDisplayName(uri: Uri): String = runCatching {
-    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-        if (c.moveToFirst()) c.getString(0) ?: "فایل محلی" else "فایل محلی"
+    val name = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0) else null
     }
+    name ?: "فایل محلی"
 }.getOrDefault("فایل محلی")
 
 private fun Context.querySize(uri: Uri): Long = runCatching {
-    contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
-        if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else 0L
+    val size = contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
+        if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null
     }
+    size ?: 0L
 }.getOrDefault(0L)
