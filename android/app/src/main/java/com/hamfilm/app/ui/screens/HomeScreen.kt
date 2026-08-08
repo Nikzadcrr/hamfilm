@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.StrokeCap
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -338,7 +338,7 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
 @Composable
 private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs: Int = 0) {
     val t = rememberInfiniteTransition(label = "float")
-    val y by t.animateFloat(
+    val floatY by t.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -347,7 +347,7 @@ private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs:
         ),
         label = "y"
     )
-    val alpha by t.animateFloat(
+    val floatAlpha by t.animateFloat(
         initialValue = 0.35f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -360,8 +360,8 @@ private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs:
         emoji,
         fontSize = 19.sp,
         modifier = modifier.graphicsLayer {
-            translationY = (-16 * y).dp.toPx()
-            alpha = alpha
+            translationY = (-16 * floatY).dp.toPx()
+            alpha = floatAlpha
         }
     )
 }
