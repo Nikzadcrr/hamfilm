@@ -131,7 +131,7 @@ fun HomeScreen(nav: NavHostController) {
 }
 
 @Composable
-fun MoviePoster(movie: Movie, onClick: () -> Unit, width: Dp = 130.dp) {
+fun MoviePoster(movie: Movie, width: Dp = 130.dp, onClick: () -> Unit) {
     Column(
         Modifier
             .width(width)
