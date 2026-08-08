@@ -137,8 +137,26 @@ class RoomSocket(
     private var avatar: String = ""
     private var password: String = ""
 
-    /** داده زنده پلیر برای پینگ همگام‌سازی: (در حال پخش؟, موقعیت به میلی‌ثانیه, بافرینگ/تمام‌شده؟) */
-    var playbackSnapshot: (() -> Triple<Boolean, Long, Boolean>)? = null
+    /** داده زنده پلیر برای پینگ — همیشه از ترد اصلی ست می‌شود (RoomScreen) */
+    @Volatile
+    var pingPlaying: Boolean = false
+        private set
+    @Volatile
+    var pingPositionMs: Long = 0L
+        private set
+    @Volatile
+    var pingBuffering: Boolean = false
+        private set
+
+    /**
+     * به‌روزرسانی داده پینگ از ترد اصلی (ExoPlayer فقط روی ترد اصلی امن است).
+     * حلقه پینگ هیچ‌وقت پلیر را لمس نمی‌کند — فقط این مقادیر را می‌خواند.
+     */
+    fun updatePingData(playing: Boolean, positionMs: Long, buffering: Boolean) {
+        pingPlaying = playing
+        pingPositionMs = positionMs
+        pingBuffering = buffering
+    }
 
     // ---------- اتصال ----------
     fun connect(name: String, avatar: String, password: String = "") {
@@ -147,14 +165,15 @@ class RoomSocket(
         this.password = password
         _state.value = SocketState.Connecting
         openSocket()
-        // پینگ دوره‌ای همگام‌سازی — کاربر را زنده نگه می‌دارد و انحراف را اصلاح می‌کند
+        // پینگ دوره‌ای همگام‌سازی — کاربر را زنده نگه می‌دارد و انحراف را اصلاح می‌کند.
+        // ⚠️ این حلقه روی ترد IO اجرا می‌شود و فقط فیلدهای ساده را می‌خواند؛
+        // هرگز به ExoPlayer دسترسی ندارد (داده پلیر از ترد اصلی می‌آید → بدون کرش)
         pingJob?.cancel()
         pingJob = scope.launch {
             while (isActive) {
                 delay(15_000)
                 if (_state.value == SocketState.Connected) {
-                    val (playing, posMs, buffering) = playbackSnapshot?.invoke() ?: Triple(false, 0L, false)
-                    sendPing(posMs, playing, buffering)
+                    sendPing(pingPositionMs, pingPlaying, pingBuffering)
                 }
             }
         }

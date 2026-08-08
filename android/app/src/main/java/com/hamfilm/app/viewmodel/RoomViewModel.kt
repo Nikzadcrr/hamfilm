@@ -250,13 +250,11 @@ class RoomViewModel : ViewModel() {
     }
 
     /**
-     * اتصال داده‌های زنده پلیر به پینگ همگام‌سازی.
-     * هر ۱۵ ثانیه موقعیت واقعی پخش به سرور می‌رود تا (۱) کاربر از لیست اعضا حذف نشود
-     * و (۲) اگر از بقیه عقب/جلو افتاد، سرور پیام correct بفرستد.
-     * buffering = پلیر در حال بافرینگ است یا فیلم تمام شده (اصلاح همگام ارسال نشود)
+     * داده زنده پلیر برای پینگ همگام‌سازی — فقط از ترد اصلی صدا زده شود!
+     * (ExoPlayer اجازه دسترسی از ترد دیگر را نمی‌دهد و اپ کرش می‌کند)
      */
-    fun bindPlayerToPing(playingProvider: () -> Boolean, positionProvider: () -> Long, bufferingProvider: () -> Boolean) {
-        socket?.playbackSnapshot = { Triple(playingProvider(), positionProvider(), bufferingProvider()) }
+    fun updatePingData(playing: Boolean, positionMs: Long, buffering: Boolean) {
+        socket?.updatePingData(playing, positionMs, buffering)
     }
 
     fun markChatRead() {

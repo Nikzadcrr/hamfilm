@@ -42,6 +42,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +58,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.hamfilm.app.R
 import com.hamfilm.app.data.ApiConfig
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.ws.*
@@ -110,12 +112,27 @@ fun RoomScreen(
                 password = initialPassword,
                 initialVideoUrl = initialVideoUrl
             )
-            // داده زنده پلیر برای پینگ همگام‌سازی (هر ۱۵ ثانیه)
-            vm.bindPlayerToPing(
-                playingProvider = { player.playWhenReady },
-                positionProvider = { player.currentPosition },
-                bufferingProvider = { player.playWhenReady && !player.isPlaying }
+            // داده زنده پلیر برای پینگ همگام‌سازی — تیکر روی ترد اصلی (مهم: فقط از اینجا پلیر خوانده می‌شود)
+            vm.updatePingData(
+                playing = player.playWhenReady,
+                positionMs = player.currentPosition,
+                buffering = player.playWhenReady && !player.isPlaying
             )
+        }
+    }
+
+    // تیکر پینگ: هر ۱۵ ثانیه موقعیت واقعی پلیر را روی ترد اصلی می‌خواند و به سوکت می‌دهد.
+    // (حلقه پینگ سوکت روی ترد IO است و هرگز پلیر را لمس نمی‌کند → بدون کرش)
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(15_000)
+            try {
+                vm.updatePingData(
+                    playing = player.playWhenReady,
+                    positionMs = player.currentPosition,
+                    buffering = player.playWhenReady && !player.isPlaying
+                )
+            } catch (_: Exception) { }
         }
     }
 
@@ -134,40 +151,51 @@ fun RoomScreen(
     var lastStateWasPlaying by remember { mutableStateOf(false) }
     var lastStateSpeed by remember { mutableStateOf(1.0) }
 
-    // کنترل راه دور → پلیر (وضعیت همگام از سرور)
+    // کنترل راه دور → پلیر (وضعیت همگام از سرور) — همه در try/catch تا هیچ پیامی کرش نکند
     vm.onRemoteState = { playing, timeSec, speed ->
-        player.playWhenReady = playing
-        player.setPlaybackSpeed(speed.toFloat().coerceIn(0.25f, 4f))
-        val target = (timeSec * 1000).toLong()
-        val now = System.currentTimeMillis()
-        // موقعیت پیش‌بینی‌شده بر اساس آخرین state — اگر پیام جدیدی نبود، سیک نمی‌کنیم
-        val expected = if (lastStateAt > 0L && lastStateWasPlaying) {
-            lastStateTime + ((now - lastStateAt) * lastStateSpeed).toLong()
-        } else lastStateTime
-        lastStateAt = now
-        lastStateTime = target
-        lastStateWasPlaying = playing
-        lastStateSpeed = speed
-        // فقط وقتی سرور واقعاً جابه‌جا شده (seek یا اختلاف واقعی) → سیک
-        if (target > 0 && kotlin.math.abs(target - expected) > 2000 &&
-            kotlin.math.abs(player.currentPosition - target) > 2000
-        ) {
-            player.seekTo(target)
-        }
+        try {
+            player.playWhenReady = playing
+            player.setPlaybackSpeed(speed.toFloat().coerceIn(0.25f, 4f))
+            val target = (timeSec * 1000).toLong()
+            val now = System.currentTimeMillis()
+            // موقعیت پیش‌بینی‌شده بر اساس آخرین state — اگر پیام جدیدی نبود، سیک نمی‌کنیم
+            val expected = if (lastStateAt > 0L && lastStateWasPlaying) {
+                lastStateTime + ((now - lastStateAt) * lastStateSpeed).toLong()
+            } else lastStateTime
+            lastStateAt = now
+            lastStateTime = target
+            lastStateWasPlaying = playing
+            lastStateSpeed = speed
+            // فقط وقتی سرور واقعاً جابه‌جا شده (seek یا اختلاف واقعی) → سیک
+            if (target > 0 && kotlin.math.abs(target - expected) > 2000 &&
+                kotlin.math.abs(player.currentPosition - target) > 2000
+            ) {
+                player.seekTo(target)
+            }
+        } catch (_: Exception) { }
     }
     vm.onRemoteCorrect = { timeSec, playing ->
-        val target = (timeSec * 1000).toLong()
-        if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 2000) {
-            player.seekTo(target)
-        }
-        player.playWhenReady = playing
+        try {
+            val target = (timeSec * 1000).toLong()
+            // دفاع: اگر سرور state معتبری ندارد (time=0 و paused — اتاق تازه) و ما در حال پخش هستیم،
+            // این اصلاح را نادیده بگیر — در غیر این صورت فیلم بی‌دلیل استپ می‌شود
+            val bogusState = timeSec <= 0.0 && !playing && player.playWhenReady && player.currentPosition > 5000
+            if (!bogusState) {
+                if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 2000) {
+                    player.seekTo(target)
+                }
+                player.playWhenReady = playing
+            }
+        } catch (_: Exception) { }
     }
     vm.onRemoteVideo = { url ->
-        if (url.isNotBlank()) {
-            player.setMediaItem(MediaItem.fromUri(url))
-            player.prepare()
-            player.playWhenReady = true
-        }
+        try {
+            if (url.isNotBlank()) {
+                player.setMediaItem(MediaItem.fromUri(url))
+                player.prepare()
+                player.playWhenReady = true
+            }
+        } catch (_: Exception) { }
     }
 
     // ---------- تمام‌صفحه ----------
@@ -416,7 +444,7 @@ fun RoomScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Default.Close,
+                                    painterResource(com.hamfilm.app.R.drawable.ic_hf_close),
                                     "بستن چت",
                                     tint = Color.White,
                                     modifier = Modifier.size(19.dp)
@@ -452,7 +480,7 @@ fun RoomScreen(
                             .clickable { fsChatOpen = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Chat, "چت زنده", tint = Color.White, modifier = Modifier.size(25.dp))
+                        Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_chat), "چت زنده", tint = Color.Unspecified, modifier = Modifier.size(25.dp))
                         if (unread > 0) {
                             Box(
                                 Modifier
@@ -501,6 +529,11 @@ fun RoomScreen(
                     onPlayerViewReady = { playerViewRef = it },
                     modifier = Modifier.weight(1f)
                 )
+                // نوار زیر پلیر: فیلم از دستگاه | لینک فیلم
+                VideoToolbar(
+                    onPickFile = ::pickLocalFile,
+                    onUrlDialog = { urlDialogOpen = true }
+                )
             }
             // چت کنار صفحه
             ChatPanel(
@@ -541,6 +574,11 @@ fun RoomScreen(
                 onFullscreen = { fullscreen = !fullscreen },
                 onPlayerViewReady = { playerViewRef = it },
                 modifier = Modifier.aspectRatio(16f / 9f)
+            )
+            // نوار زیر پلیر: فیلم از دستگاه | لینک فیلم
+            VideoToolbar(
+                onPickFile = ::pickLocalFile,
+                onUrlDialog = { urlDialogOpen = true }
             )
             // نوار اعضا
             if (peers.isNotEmpty()) {
@@ -779,7 +817,7 @@ private fun RoomTopBar(
         ) {
             // ── منوی ۳ خط (همه تنظیمات) ──
             TopBarIconButton(
-                icon = Icons.Default.Menu,
+                icon = com.hamfilm.app.R.drawable.ic_hf_menu,
                 contentDescription = "منوی اتاق",
                 tint = Color(0xFFBFDBFE),
                 bg = Color(0xFF3B82F6).copy(alpha = 0.18f),
@@ -850,7 +888,7 @@ private fun RoomTopBar(
                     )
                     Spacer(Modifier.width(4.dp))
                     Icon(
-                        Icons.Default.ContentCopy,
+                        painterResource(com.hamfilm.app.R.drawable.ic_hf_copy),
                         "کپی کد",
                         tint = BrandCyan.copy(alpha = 0.7f),
                         modifier = Modifier.size(13.dp)
@@ -861,7 +899,7 @@ private fun RoomTopBar(
             // ── دکمه قفل (میزبان) ──
             if (vm.isHost) {
                 TopBarIconButton(
-                    icon = if (locked) Icons.Default.Lock else Icons.Default.LockOpen,
+                    icon = if (locked) com.hamfilm.app.R.drawable.ic_hf_lock else com.hamfilm.app.R.drawable.ic_hf_lock_open,
                     contentDescription = "قفل اتاق",
                     tint = if (locked) Color(0xFFFCA5A5) else Color(0xFFFCD34D),
                     bg = if (locked) Color(0xFFF43F5E).copy(alpha = 0.18f) else Color(0xFFF59E0B).copy(alpha = 0.15f),
@@ -872,7 +910,7 @@ private fun RoomTopBar(
 
             // ── اشتراک‌گذاری ──
             TopBarIconButton(
-                icon = Icons.Default.Share,
+                icon = com.hamfilm.app.R.drawable.ic_hf_share,
                 contentDescription = "دعوت دوستان",
                 tint = BrandCyan,
                 bg = Color(0xFF22D3EE).copy(alpha = 0.12f),
@@ -895,7 +933,7 @@ private fun RoomTopBar(
                         AvatarImage(avatarId = p.avatar, size = 26.dp)
                     }
                     if (peers.isEmpty()) {
-                        Icon(Icons.Default.People, null, tint = Color(0xFF6EE7B7), modifier = Modifier.size(20.dp))
+                        Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_users), null, tint = Color(0xFF6EE7B7), modifier = Modifier.size(20.dp))
                     }
                 }
                 Spacer(Modifier.width(6.dp))
@@ -1026,9 +1064,9 @@ private fun VideoSection(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        if (isPlaying) painterResource(com.hamfilm.app.R.drawable.ic_hf_pause) else painterResource(com.hamfilm.app.R.drawable.ic_hf_play),
                         contentDescription = "پخش/توقف",
-                        tint = Color.White,
+                        tint = Color.Unspecified,
                         modifier = Modifier.size(34.dp)
                     )
                 }
@@ -1058,7 +1096,7 @@ private fun VideoSection(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                    if (isFullscreen) com.hamfilm.app.R.drawable.ic_hf_fullscreen_exit else com.hamfilm.app.R.drawable.ic_hf_fullscreen,
                     if (isFullscreen) "خروج از تمام‌صفحه" else "تمام‌صفحه",
                     tint = if (isFullscreen) Color(0xFF7DD3FC) else Color(0xFFE879F9),
                     modifier = Modifier.size(21.dp)
@@ -1068,6 +1106,66 @@ private fun VideoSection(
 
         // واکنش‌های لحظه‌ای (فقط از طرف دیگران)
         ReactionBurst(vm)
+    }
+}
+
+// ============================================================
+//  نوار ابزار پایین (زیر ویدیو) — فیلم از دستگاه | لینک فیلم
+// ============================================================
+@Composable
+private fun VideoToolbar(
+    onPickFile: () -> Unit,
+    onUrlDialog: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(BrandCard.copy(alpha = 0.5f))
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        // انتخاب فیلم از لوکال
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onPickFile)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painterResource(com.hamfilm.app.R.drawable.ic_hf_folder),
+                "فایل محلی",
+                tint = BrandCyan,
+                modifier = Modifier.size(19.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text("فیلم از دستگاه", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BrandText)
+        }
+        // خط جداکننده خوشگل
+        Box(
+            Modifier
+                .width(1.dp)
+                .height(22.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, BrandCyan.copy(alpha = 0.5f), Color.Transparent)))
+        )
+        // تغییر لینک
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onUrlDialog)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painterResource(com.hamfilm.app.R.drawable.ic_hf_link),
+                "لینک ویدیو",
+                tint = BrandPurple,
+                modifier = Modifier.size(19.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text("لینک فیلم", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BrandText)
+        }
     }
 }
 
@@ -1226,7 +1324,7 @@ private fun ChatPanel(
                     .clickable { onSend() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Send, "ارسال", tint = Color.White, modifier = Modifier.size(21.dp))
+                Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_send), "ارسال", tint = Color.Unspecified, modifier = Modifier.size(21.dp))
             }
         }
     }
@@ -1269,19 +1367,19 @@ private fun RoomOptionsSheet(
             )
             // ── ویدیو ──
             Text("🎬 ویدیو", fontSize = 11.sp, color = BrandCyan, modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp))
-            SheetRow(Icons.Default.FolderOpen, "انتخاب فیلم از گوشی", BrandCyan, onPickFile)
-            SheetRow(Icons.Default.Link, "تغییر ویدیو با لینک", BrandPurple, onUrlDialog)
-            SheetRow(Icons.Default.Settings, "تنظیمات پلیر (صدا/زیرنویس/سرعت)", Color(0xFFF472B6), onPlayerSettings)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_folder, "انتخاب فیلم از گوشی", BrandCyan, onPickFile)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_link, "تغییر ویدیو با لینک", BrandPurple, onUrlDialog)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_settings, "تنظیمات پلیر (صدا/زیرنویس/سرعت)", Color(0xFFF472B6), onPlayerSettings)
             HorizontalDivider(color = BrandCardLight, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
 
             // ── اتاق ──
             Text("🚪 اتاق", fontSize = 11.sp, color = BrandCyan, modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp))
-            SheetRow(Icons.Default.People, "اعضای اتاق", Color(0xFF6EE7B7), onMembers)
-            SheetRow(Icons.Default.ContentCopy, "کپی کد اتاق", BrandText, onCopy)
-            SheetRow(Icons.Default.Share, "دعوت دوستان", BrandGreen, onShare)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_users, "اعضای اتاق", Color(0xFF6EE7B7), onMembers)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_copy, "کپی کد اتاق", BrandText, onCopy)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_share, "دعوت دوستان", BrandGreen, onShare)
             if (isHost) {
                 SheetRow(
-                    if (locked) Icons.Default.LockOpen else Icons.Default.Lock,
+                    if (locked) com.hamfilm.app.R.drawable.ic_hf_lock_open else com.hamfilm.app.R.drawable.ic_hf_lock,
                     if (locked) "باز کردن قفل اتاق" else "قفل کردن اتاق",
                     BrandAmber
                 ) { onLock(!locked) }
@@ -1311,13 +1409,13 @@ private fun RoomOptionsSheet(
                 }
             }
             HorizontalDivider(color = BrandCardLight, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
-            SheetRow(Icons.Default.ExitToApp, "خروج از اتاق", BrandDanger, onLeave)
+            SheetRow(com.hamfilm.app.R.drawable.ic_hf_exit, "خروج از اتاق", BrandDanger, onLeave)
         }
     }
 }
 
 @Composable
-private fun SheetRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, tint: Color, onClick: () -> Unit) {
+private fun SheetRow(iconRes: Int, title: String, tint: Color, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -1325,7 +1423,7 @@ private fun SheetRow(icon: androidx.compose.ui.graphics.vector.ImageVector, titl
             .padding(horizontal = 20.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+        Icon(painterResource(iconRes), null, tint = tint, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Text(title, fontSize = 14.5.sp, color = BrandText)
     }
@@ -1500,7 +1598,7 @@ private fun MessageRow(m: WsMessage, isMe: Boolean, seen: Boolean) {
                     if (isMe) {
                         Spacer(Modifier.height(2.dp))
                         Icon(
-                            if (seen) Icons.Default.DoneAll else Icons.Default.Done,
+                            if (seen) com.hamfilm.app.R.drawable.ic_hf_done_all else com.hamfilm.app.R.drawable.ic_hf_done,
                             contentDescription = if (seen) "دیده شد" else "ارسال شد",
                             tint = if (seen) Color(0xFF81C784) else Color.White.copy(0.55f),
                             modifier = Modifier.size(13.dp)
@@ -1565,14 +1663,14 @@ private fun MembersDialog(
                         if (isHost && !isMe) {
                             IconButton(onClick = { onMute(p.id, true) }) {
                                 Icon(
-                                    Icons.Default.MicOff,
+                                    com.hamfilm.app.R.drawable.ic_hf_mic_off,
                                     contentDescription = "سکوت",
                                     tint = BrandTextMuted,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             IconButton(onClick = { onKick(p.id); onClose() }) {
-                                Icon(Icons.Default.Delete, "اخراج", tint = BrandDanger, modifier = Modifier.size(18.dp))
+                                Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_delete), "اخراج", tint = BrandDanger, modifier = Modifier.size(18.dp))
                             }
                         }
                     }

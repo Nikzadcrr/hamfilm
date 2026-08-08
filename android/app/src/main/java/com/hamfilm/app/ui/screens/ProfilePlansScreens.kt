@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import com.hamfilm.app.ui.navigation.Routes
+import com.hamfilm.app.R
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.api.AppRepository
 import com.hamfilm.app.data.model.Plan
@@ -51,7 +53,7 @@ fun PlansScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
                 Text("💎 پلن‌های هم‌فیلم", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
             if (loading) {

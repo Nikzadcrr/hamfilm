@@ -22,9 +22,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hamfilm.app.R
 import com.hamfilm.app.data.ApiConfig
 import com.hamfilm.app.ui.theme.*
 
@@ -215,7 +217,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 // ---------- دکمه گرد رنگی برای نوار بالای اتاق ----------
 @Composable
 fun TopBarIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconRes: Int,
     contentDescription: String,
     tint: Color,
     bg: Color,
@@ -232,7 +234,12 @@ fun TopBarIconButton(
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(20.dp))
+            Icon(
+                painterResource(iconRes),
+                contentDescription,
+                tint = tint,
+                modifier = Modifier.size(20.dp)
+            )
         }
         if (badge > 0) {
             Box(

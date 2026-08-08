@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.hamfilm.app.data.TokenStore
+import com.hamfilm.app.R
 import com.hamfilm.app.ui.components.AvatarImage
 import com.hamfilm.app.ui.components.GlassCard
 import com.hamfilm.app.ui.components.GradientButton
@@ -82,7 +84,7 @@ fun HomeScreen(nav: NavHostController) {
             ) {
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { nav.navigate(Routes.SETTINGS) }) {
-                    Icon(Icons.Default.Settings, "تنظیمات", tint = BrandTextMuted)
+                    Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_settings), "تنظیمات", tint = BrandTextMuted)
                 }
             }
 
@@ -126,7 +128,7 @@ fun HomeScreen(nav: NavHostController) {
                         IconButton(onClick = {
                             authVm.logout()
                         }) {
-                            Icon(Icons.Default.Logout, "خروج از حساب", tint = BrandDanger, modifier = Modifier.size(20.dp))
+                            Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_logout), "خروج از حساب", tint = BrandDanger, modifier = Modifier.size(20.dp))
                         }
                     }
                     Spacer(Modifier.height(10.dp))

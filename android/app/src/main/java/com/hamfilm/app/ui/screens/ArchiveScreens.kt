@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.hamfilm.app.data.api.AppRepository
+import com.hamfilm.app.R
 import com.hamfilm.app.data.model.Genre
 import com.hamfilm.app.data.model.Movie
 import com.hamfilm.app.ui.components.*
@@ -70,7 +72,7 @@ fun ArchiveScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
                 Text("🎞️ آرشیو فیلم‌ها", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
 
@@ -81,7 +83,7 @@ fun ArchiveScreen(nav: NavHostController) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 placeholder = { Text("جستجوی فیلم…", color = BrandTextMuted) },
                 shape = RoundedCornerShape(14.dp),
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = BrandTextMuted) },
+                leadingIcon = { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_search), null, tint = BrandTextMuted) },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandCyan, unfocusedBorderColor = BrandCardLight)
             )
@@ -226,7 +228,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                             )
                         )
                         IconButton(onClick = { nav.popBackStack() }, modifier = Modifier.statusBarsPadding()) {
-                            Icon(Icons.Default.ArrowForward, "بازگشت", tint = Color.White)
+                            Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = Color.White)
                         }
                     }
                 }
@@ -446,7 +448,7 @@ private fun DownloadRow(link: com.hamfilm.app.data.model.DownloadLink, index: In
                     Text(size, fontSize = 11.sp, color = BrandTextMuted)
                 }
             }
-            Icon(Icons.Default.Download, "دانلود", tint = BrandCyan, modifier = Modifier.size(22.dp))
+            Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_download), "دانلود", tint = BrandCyan, modifier = Modifier.size(22.dp))
         }
     }
 }
