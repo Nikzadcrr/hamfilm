@@ -18,12 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material.icons.filled.VideoCall
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +30,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,7 +49,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 // ============================================================
-//  صفحه اصلی — لوگوی انیمیشنی + دکمه‌های آیکون‌دار بزرگ
+//  صفحه اصلی — لوگوی انیمیشنی + دکمه‌های بزرگ مرتب
 // ============================================================
 @Composable
 fun HomeScreen(nav: NavHostController) {
@@ -74,7 +70,7 @@ fun HomeScreen(nav: NavHostController) {
                 .padding(horizontal = 22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ---------- نوار بالا ----------
+            // ---------- نوار بالا (تنظیمات) ----------
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -86,11 +82,11 @@ fun HomeScreen(nav: NavHostController) {
             }
 
             // ---------- لوگوی انیمیشنی ----------
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(10.dp))
             AnimatedLogo()
 
             // ---------- پیام خوش‌آمد ----------
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(22.dp))
             Text(
                 settings?.welcomeMessage?.takeIf { it.isNotBlank() } ?: "خوش آمدید!",
                 style = MaterialTheme.typography.titleMedium,
@@ -102,6 +98,7 @@ fun HomeScreen(nav: NavHostController) {
                 color = BrandTextMuted
             )
 
+            // اعلامیه (اگر فعال باشد)
             if (settings?.announcementActive == true && !settings?.announcement.isNullOrBlank()) {
                 Spacer(Modifier.height(14.dp))
                 Box(
@@ -114,23 +111,25 @@ fun HomeScreen(nav: NavHostController) {
                 }
             }
 
-            // ---------- دکمه‌ها ----------
-            Spacer(Modifier.height(26.dp))
+            // ---------- دکمه‌های بزرگ ----------
+            Spacer(Modifier.height(28.dp))
 
+            // ۱) ساخت اتاق — دکمه اصلی
             AnimatedIn(0) {
                 PrimaryBigButton(
-                    icon = Icons.Default.VideoCall,
+                    emoji = "🎬",
                     title = "ساخت اتاق",
-                    subtitle = "لینک ویدیو بذار یا بعداً از گوشی انتخاب کن",
+                    subtitle = "لینک ویدیو بذار و دوستانت رو دعوت کن",
                     onClick = { nav.navigate(Routes.CREATE) }
                 )
             }
 
-            Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // ۲) ورود با کد اتاق
             AnimatedIn(120) {
                 GlassNavButton(
-                    icon = Icons.Default.Key,
+                    emoji = "🔑",
                     title = "ورود با کد اتاق",
                     subtitle = "با کد ۶ رقمی به اتاق دوستت بپیوند",
                     accent = BrandCyan,
@@ -138,11 +137,12 @@ fun HomeScreen(nav: NavHostController) {
                 )
             }
 
-            Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // ۳) آرشیو فیلم‌ها
             AnimatedIn(240) {
                 GlassNavButton(
-                    icon = Icons.Default.VideoLibrary,
+                    emoji = "🎞️",
                     title = "آرشیو فیلم‌ها",
                     subtitle = "جدیدترین فیلم‌ها و سریال‌ها",
                     accent = BrandPurple,
@@ -151,11 +151,12 @@ fun HomeScreen(nav: NavHostController) {
                 )
             }
 
-            Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // ۴) اشتراک ویژه
             AnimatedIn(360) {
                 GlassNavButton(
-                    icon = Icons.Default.WorkspacePremium,
+                    emoji = "💎",
                     title = "اشتراک ویژه",
                     subtitle = "پلن‌ها و تخفیف‌های هم‌فیلم",
                     accent = BrandAmber,
@@ -164,11 +165,12 @@ fun HomeScreen(nav: NavHostController) {
                 )
             }
 
-            Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // ۵) پشتیبانی
             AnimatedIn(480) {
                 GlassNavButton(
-                    icon = Icons.Default.SupportAgent,
+                    emoji = "🎟️",
                     title = "پشتیبانی",
                     subtitle = "تیکت بزن، راهنما ببین، گزارش بده",
                     accent = BrandGreen,
@@ -176,8 +178,8 @@ fun HomeScreen(nav: NavHostController) {
                 )
             }
 
-            // ---------- ورود / ساخت حساب ----------
-            Spacer(Modifier.height(32.dp))
+            // ---------- بخش ورود / ساخت حساب ----------
+            Spacer(Modifier.height(34.dp))
             AnimatedIn(600) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -211,7 +213,7 @@ fun HomeScreen(nav: NavHostController) {
 }
 
 // ============================================================
-//  لوگوی انیمیشنی
+//  لوگوی انیمیشنی: حلقه گرادیانی چرخان + هاله نبض‌دار + ذرات شناور
 // ============================================================
 @Composable
 fun AnimatedLogo(modifier: Modifier = Modifier) {
@@ -244,11 +246,12 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
         label = "glow"
     )
 
-    Box(modifier = modifier.size(168.dp), contentAlignment = Alignment.Center) {
-        // هاله نبض‌دار
+    Box(modifier = modifier.size(170.dp), contentAlignment = Alignment.Center) {
+
+        // هاله نبض‌دار پشت لوگو
         Box(
             Modifier
-                .size(163.dp)
+                .size(165.dp)
                 .graphicsLayer {
                     scaleX = pulse
                     scaleY = pulse
@@ -266,16 +269,16 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
                 )
         )
 
-        // ذرات شناور
+        // ذرات شناور دور لوگو
         FloatingEmoji("🎬", Modifier.align(Alignment.TopStart).offset(x = 6.dp, y = 10.dp), 0)
         FloatingEmoji("🍿", Modifier.align(Alignment.TopEnd).offset(x = (-4).dp, y = 16.dp), 700)
         FloatingEmoji("✨", Modifier.align(Alignment.BottomStart).offset(x = 10.dp, y = (-6).dp), 350)
         FloatingEmoji("🎥", Modifier.align(Alignment.BottomEnd).offset(x = (-8).dp, y = (-2).dp), 1050)
 
-        // حلقه گرادیانی چرخان
+        // حلقه گرادیانی چرخان با دو نقطه نورانی
         Canvas(
             Modifier
-                .size(148.dp)
+                .size(150.dp)
                 .graphicsLayer { rotationZ = rotation }
         ) {
             val radius = size.minDimension / 2f
@@ -290,8 +293,9 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
                     )
                 ),
                 radius = radius - strokeWidth / 2,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
+            // دو نقطه نورانی روی حلقه
             listOf(0f, 180f).forEach { base ->
                 val angle = Math.toRadians(base.toDouble())
                 val cx = size.width / 2 + cos(angle).toFloat() * (radius - strokeWidth / 2)
@@ -301,10 +305,10 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
             }
         }
 
-        // هسته
+        // دایره داخلی + مثلث پخش
         Box(
             Modifier
-                .size(104.dp)
+                .size(106.dp)
                 .shadow(18.dp, CircleShape, spotColor = BrandPurple.copy(alpha = 0.45f))
                 .clip(CircleShape)
                 .background(BrandCard)
@@ -314,7 +318,7 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
                 },
             contentAlignment = Alignment.Center
         ) {
-            Canvas(Modifier.size(44.dp)) {
+            Canvas(Modifier.size(46.dp)) {
                 val path = Path().apply {
                     moveTo(size.width * 0.28f, size.height * 0.16f)
                     lineTo(size.width * 0.84f, size.height * 0.5f)
@@ -330,6 +334,7 @@ fun AnimatedLogo(modifier: Modifier = Modifier) {
     }
 }
 
+// ---------- ذره شناور ----------
 @Composable
 private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs: Int = 0) {
     val t = rememberInfiniteTransition(label = "float")
@@ -362,48 +367,13 @@ private fun FloatingEmoji(emoji: String, modifier: Modifier = Modifier, delayMs:
 }
 
 // ============================================================
-//  دکمه‌ها — آیکون‌های واقعی با انیمیشن
+//  دکمه‌ها
 // ============================================================
 
-/** آیکون داخل دایره با هاله نبض‌دار */
-@Composable
-private fun AnimatedIconBadge(
-    icon: ImageVector,
-    contentDescription: String?,
-    accent: Color,
-    size: androidx.compose.ui.unit.Dp = 50.dp,
-    iconSize: androidx.compose.ui.unit.Dp = 24.dp
-) {
-    val t = rememberInfiniteTransition(label = "badge")
-    val pulse by t.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(tween(1500), repeatMode = RepeatMode.Reverse),
-        label = "pulse"
-    )
-    // هاله
-    Box(
-        Modifier
-            .size(size)
-            .graphicsLayer { scaleX = pulse; scaleY = pulse }
-            .background(accent.copy(alpha = 0.22f), CircleShape),
-        contentAlignment = Alignment.Center
-    ) { }
-    Box(
-        Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(accent.copy(alpha = 0.16f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription, tint = accent, modifier = Modifier.size(iconSize))
-    }
-}
-
-// دکمه اصلی گرادیانی (ساخت اتاق)
+// دکمه اصلی گرادیانی بزرگ (ساخت اتاق)
 @Composable
 fun PrimaryBigButton(
-    icon: ImageVector,
+    emoji: String,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -416,51 +386,34 @@ fun PrimaryBigButton(
             .clip(RoundedCornerShape(22.dp))
             .background(BrandGradient)
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 18.dp)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
-        // درخشش متحرک
-        val shine = rememberInfiniteTransition(label = "shine")
-        val shineX by shine.animateFloat(
-            initialValue = -0.6f,
-            targetValue = 1.4f,
-            animationSpec = infiniteRepeatable(tween(3200, easing = LinearEasing)),
-            label = "x"
-        )
-        Box(
-            Modifier
-                .fillMaxHeight(0.6f)
-                .align(Alignment.CenterStart)
-                .graphicsLayer { translationX = shineX * size.width }
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color.Transparent, Color.White.copy(alpha = 0.25f), Color.Transparent)
-                    )
-                )
-        )
-
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AnimatedIconBadge(
-                icon = icon,
-                contentDescription = null,
-                accent = Color.White,
-                size = 50.dp,
-                iconSize = 26.dp
-            )
-            Spacer(Modifier.width(15.dp))
+            // آیکون داخل دایره شیشه‌ای
+            Box(
+                Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(emoji, fontSize = 26.sp)
+            }
+            Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(Modifier.height(3.dp))
-                Text(subtitle, fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.8f))
+                Text(subtitle, fontSize = 12.sp, color = Color.White.copy(alpha = 0.78f))
             }
             Text("‹", fontSize = 24.sp, color = Color.White.copy(alpha = 0.7f))
         }
     }
 }
 
-// دکمه شیشه‌ای
+// دکمه شیشه‌ای (ورود با کد / آرشیو / اشتراک / پشتیبانی)
 @Composable
 fun GlassNavButton(
-    icon: ImageVector,
+    emoji: String,
     title: String,
     subtitle: String,
     accent: Color,
@@ -474,10 +427,19 @@ fun GlassNavButton(
             .clip(RoundedCornerShape(20.dp))
             .background(BrandCard)
             .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp, vertical = 15.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AnimatedIconBadge(icon = icon, contentDescription = null, accent = accent)
+            // آیکون با هاله رنگی
+            Box(
+                Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(emoji, fontSize = 22.sp)
+            }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -502,7 +464,7 @@ fun GlassNavButton(
     }
 }
 
-// ورود تدریجی
+// ---------- ورود تدریجی با تاخیر ----------
 @Composable
 fun AnimatedIn(delayMs: Int, content: @Composable () -> Unit) {
     var visible by remember { mutableStateOf(false) }

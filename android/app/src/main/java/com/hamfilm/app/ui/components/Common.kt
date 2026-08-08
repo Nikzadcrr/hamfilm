@@ -84,7 +84,7 @@ fun GlassCard(
 fun HamTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
+    label: String = "",
     modifier: Modifier = Modifier,
     placeholder: String = "",
     password: Boolean = false,
@@ -95,7 +95,7 @@ fun HamTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
-        label = { Text(label) },
+        label = { if (label.isNotBlank()) Text(label) },
         placeholder = { Text(placeholder, color = BrandTextMuted) },
         singleLine = singleLine,
         visualTransformation = if (password)

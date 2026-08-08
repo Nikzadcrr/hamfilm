@@ -221,11 +221,12 @@ r.get('/admin/movies', adminOnly, (req, res) => {
 r.post('/admin/movies', adminOnly, (req, res) => {
   const m = req.body || {};
   const slug = m.slug || uid(10);
-  db.prepare(`INSERT INTO movies (slug, title, title_en, title_fa, year, genres, country, language, duration_min, age_rating, imdb_rating, imdb_id, satisfaction, views, description, cover_url, source_url, featured)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+  db.prepare(`INSERT INTO movies (slug, title, title_en, title_fa, year, genres, country, language, duration_min, age_rating, imdb_rating, imdb_id, satisfaction, views, description, cover_url, source_url, download_links, trailer_url, featured)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(slug, m.title || '', m.titleEn || '', m.titleFa || '', m.year || 0, JSON.stringify(m.genres || []),
       m.country || '', m.language || '', m.durationMin || null, m.ageRating || '', m.imdbRating || null,
-      m.imdbId || '', m.satisfaction || null, 0, m.description || '', m.coverUrl || '', m.sourceUrl || '', m.featured ? 1 : 0);
+      m.imdbId || '', m.satisfaction || null, 0, m.description || '', m.coverUrl || '', m.sourceUrl || '',
+      JSON.stringify(m.downloadLinks || []), m.trailerUrl || '', m.featured ? 1 : 0);
   res.status(201).json({ ok: true, slug });
 });
 r.get('/admin/settings', adminOnly, (req, res) => {
