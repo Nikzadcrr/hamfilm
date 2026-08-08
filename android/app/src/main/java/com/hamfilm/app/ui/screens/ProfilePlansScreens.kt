@@ -66,7 +66,7 @@ fun PlansScreen(nav: NavHostController) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(plan.name, style = MaterialTheme.typography.titleLarge)
+                                        Text(plan.name, style = MaterialTheme.typography.titleLarge, color = BrandText)
                                         if (plan.isPopular) {
                                             Spacer(Modifier.width(8.dp))
                                             StatusBar("محبوب", BrandAmber)
@@ -137,7 +137,7 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(30.dp))
             AvatarChip(TokenStore.avatar, size = 84.dp)
             Spacer(Modifier.height(12.dp))
-            Text(TokenStore.name.ifBlank { "مهمان" }, style = MaterialTheme.typography.titleLarge)
+            Text(TokenStore.name.ifBlank { "مهمان" }, style = MaterialTheme.typography.titleLarge, color = BrandText)
 
             Spacer(Modifier.height(14.dp))
             val active = sub != null && sub!!.endsAt > System.currentTimeMillis()
@@ -191,7 +191,7 @@ private fun MenuRow(title: String, onClick: () -> Unit) {
             .padding(vertical = 14.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, color = BrandText)
         Text("‹", color = BrandTextMuted, fontSize = 18.sp)
     }
 }

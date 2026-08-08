@@ -91,6 +91,7 @@ fun RoomScreen(
     val player = remember {
         ExoPlayer.Builder(context).build().apply { repeatMode = Player.REPEAT_MODE_OFF }
     }
+    val playerViewRef = remember { java.lang.ref.WeakReference<PlayerView>(null) }
     DisposableEffect(player) { onDispose { player.release() } }
 
     // ---------- اتصال ----------
@@ -175,9 +176,11 @@ fun RoomScreen(
         uri?.let {
             val name = context.queryDisplayName(it)
             val size = context.querySize(it)
+            // فقط آماده‌سازی — بدون پخش خودکار (کاربر خودش دکمه پخش را می‌زند)
             player.setMediaItem(MediaItem.fromUri(it))
             player.prepare()
-            player.playWhenReady = true
+            player.playWhenReady = false
+            player.seekTo(0)
             // hash محتوای فایل (برای همگام‌سازی) — در پس‌زمینه تا UI لگ نزند
             val hash = context.queryFileHash(it)
             vm.shareLocalFile(name, size, hash)
@@ -189,12 +192,47 @@ fun RoomScreen(
         filePicker.launch(arrayOf("video/*", "audio/*"))
     }
 
+    // انتخاب فایل زیرنویس
+    val subtitlePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            subtitleUri = it
+            subtitleEnabled = true
+            // اتصال زیرنویس به پلیر
+            player.setMediaItem(
+                player.currentMediaItem!!.buildUpon()
+                    .setSubtitleConfigurations(
+                        listOf(
+                            androidx.media3.common.MediaItem.SubtitleConfiguration.Builder(Uri.parse(it.toString()))
+                                .setMimeType("text/subrip")
+                                .setLanguage("fa")
+                                .build()
+                        )
+                    )
+                    .build()
+            )
+            player.prepare()
+            if (player.playWhenReady) player.play()
+        }
+    }
+
+    fun pickSubtitle() {
+        subtitlePicker.launch(arrayOf("*/*"))
+    }
+
     // ---------- state ها ----------
     var chatText by remember { mutableStateOf("") }
     var chatOpen by remember { mutableStateOf(!isLandscape) }
+    var fsChatOpen by remember { mutableStateOf(false) }
+    val unread by vm.unread.collectAsState()
     var membersOpen by remember { mutableStateOf(false) }
     var optionsOpen by remember { mutableStateOf(false) }
     var urlDialogOpen by remember { mutableStateOf(false) }
+    var playerSettingsOpen by remember { mutableStateOf(false) }
+    var subtitleUri by remember { mutableStateOf<Uri?>(null) }
+    var subtitleEnabled by remember { mutableStateOf(false) }
+    var subtitleColorIndex by remember { mutableStateOf(0) }
     val listState = rememberLazyListState()
     var typingJob by remember { mutableStateOf<Job?>(null) }
 
@@ -214,6 +252,19 @@ fun RoomScreen(
         vm.togglePlay(player.currentPosition)
     }
 
+    // اعمال رنگ زیرنویس
+    fun applySubtitleColor(index: Int) {
+        subtitleColorIndex = index
+        try {
+            val playerView = playerViewRef.get()
+            if (playerView != null) {
+                val stv = androidx.media3.ui.SubtitleView(context)
+                stv.setStyle(com.hamfilm.app.ui.components.buildCaptionStyle(index))
+                playerView.subtitleView = stv
+            }
+        } catch (_: Exception) {}
+    }
+
     // ---------- چیدمان ----------
     if (fullscreen) {
         // ═══ حالت تمام‌صفحه: فقط ویدیو + دکمه بستن شناور ═══
@@ -221,9 +272,10 @@ fun RoomScreen(
             VideoSection(
                 player = player, vm = vm, fileInfo = fileInfo,
                 isPlaying = player.isPlaying,
+                roomName = vm.roomName,
+                roomCode = roomCode,
                 onPlayPause = ::onPlayPause,
-                onPickFile = ::pickLocalFile,
-                onUrlDialog = { urlDialogOpen = true },
+                onOpenSettings = { playerSettingsOpen = true },
                 modifier = Modifier.fillMaxSize()
             )
             // دکمه بستن تمام‌صفحه — شناور بالا
@@ -265,6 +317,61 @@ fun RoomScreen(
                     modifier = Modifier.widthIn(max = 160.dp)
                 )
             }
+            // ── چت افقی تمام‌صفحه: دکمه شناور + پنل کنار (مثل سایت) ──
+            if (fsChatOpen) {
+                Box(
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .widthIn(max = 320.dp)
+                        .background(BrandCard.copy(alpha = 0.92f))
+                ) {
+                    ChatPanel(
+                        messages = messages, typing = typing, listState = listState,
+                        chatText = chatText, onChatText = { chatText = it },
+                        onSend = { vm.sendChat(chatText); chatText = ""; vm.notifyTyping(false) },
+                        onTyping = { on -> vm.notifyTyping(on) },
+                        onReaction = { vm.sendReaction(it) },
+                        myId = vm.myId,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            } else {
+                // دکمه چت شناور
+                Box(
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 12.dp)
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Brush.linearGradient(listOf(BrandPurple, BrandCyan)))
+                        .clickable { fsChatOpen = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Chat, "چت زنده", tint = Color.White, modifier = Modifier.size(24.dp))
+                    if (unread > 0) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 4.dp, y = (-4).dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFFF43F5E))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        ) {
+                            Text(unread.toString(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            // نوتیف پیام‌ها بالا
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 8.dp)
+            ) {
+                ChatNotifyStack(messages = messages, myId = vm.myId, onOpenChat = { fsChatOpen = true })
+            }
         }
     } else if (isLandscape) {
         // ═══ حالت افقی (غیر تمام‌صفحه): ویدیو سمت راست + چت کنارش ═══
@@ -284,10 +391,15 @@ fun RoomScreen(
                 VideoSection(
                     player = player, vm = vm, fileInfo = fileInfo,
                     isPlaying = player.isPlaying,
+                    roomName = vm.roomName,
+                    roomCode = roomCode,
                     onPlayPause = ::onPlayPause,
-                    onPickFile = ::pickLocalFile,
-                    onUrlDialog = { urlDialogOpen = true },
+                    onOpenSettings = { playerSettingsOpen = true },
                     modifier = Modifier.weight(1f)
+                )
+                VideoToolbar(
+                    onPickFile = ::pickLocalFile,
+                    onUrlDialog = { urlDialogOpen = true }
                 )
             }
             // چت کنار صفحه
@@ -325,10 +437,15 @@ fun RoomScreen(
             VideoSection(
                 player = player, vm = vm, fileInfo = fileInfo,
                 isPlaying = player.isPlaying,
+                roomName = vm.roomName,
+                roomCode = roomCode,
                 onPlayPause = ::onPlayPause,
-                onPickFile = ::pickLocalFile,
-                onUrlDialog = { urlDialogOpen = true },
+                onOpenSettings = { playerSettingsOpen = true },
                 modifier = Modifier.aspectRatio(16f / 9f)
+            )
+            VideoToolbar(
+                onPickFile = ::pickLocalFile,
+                onUrlDialog = { urlDialogOpen = true }
             )
             // نوار اعضا
             if (peers.isNotEmpty()) {
@@ -338,6 +455,10 @@ fun RoomScreen(
                 ) {
                     items(peers, key = { it.id }) { p -> PeerChip(p, isMe = p.id == vm.myId) }
                 }
+            }
+            // نوتیف پیام‌های جدید (بالا سمت راست)
+            Box(Modifier.fillMaxWidth()) {
+                ChatNotifyStack(messages = messages, myId = vm.myId, onOpenChat = { chatOpen = true })
             }
             // چت
             AnimatedVisibility(
@@ -398,6 +519,29 @@ fun RoomScreen(
                 player.playWhenReady = true
                 vm.changeVideo(url)
             }
+        )
+    }
+
+    // ---------- شیت تنظیمات پلیر (ترک صوتی/زیرنویس/رنگ) ----------
+    if (playerSettingsOpen) {
+        com.hamfilm.app.ui.components.PlayerSettingsSheet(
+            player = player,
+            onClose = { playerSettingsOpen = false },
+            onSubtitleFile = { pickSubtitle() },
+            subtitleColorIndex = subtitleColorIndex,
+            onSubtitleColor = { i ->
+                applySubtitleColor(i)
+            },
+            onSubtitleEnabled = { en ->
+                subtitleEnabled = en
+                if (!en) {
+                    // حذف زیرنویس
+                    val cur = player.currentMediaItem ?: return@PlayerSettingsSheet
+                    player.setMediaItem(cur.buildUpon().setSubtitleConfigurations(emptyList()).build())
+                    player.prepare()
+                }
+            },
+            subtitleEnabled = subtitleEnabled
         )
     }
 
@@ -633,7 +777,8 @@ private fun RoomTopBar(
 }
 
 // ============================================================
-//  بخش ویدیو
+//  بخش ویدیو — پخش مرکزی + تنظیمات پایین‌گوشه + نام نئونی بالا
+//  (دکمه‌های فایل/لینک به نوار پایین منتقل شدند)
 // ============================================================
 @Composable
 private fun VideoSection(
@@ -641,9 +786,10 @@ private fun VideoSection(
     vm: RoomViewModel,
     fileInfo: WsFileInfo?,
     isPlaying: Boolean,
+    roomName: String,
+    roomCode: String,
     onPlayPause: () -> Unit,
-    onPickFile: () -> Unit,
-    onUrlDialog: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -656,6 +802,7 @@ private fun VideoSection(
                 PlayerView(ctx).apply {
                     this.player = player
                     useController = true
+                    controllerAutoShow = false
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
@@ -665,59 +812,65 @@ private fun VideoSection(
             modifier = Modifier.fillMaxSize()
         )
 
-        // نشانگر فایل محلی در حال پخش
+        // ── نام اتاق — قاب نئونی بالا-گوشه ──
+        Row(
+            Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(10.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("🎬", fontSize = 13.sp)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                roomName.ifBlank { "اتاق $roomCode" },
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFFBFE3FF),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 150.dp),
+                style = androidx.compose.ui.text.TextStyle(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = Color(0xFF38BDF8).copy(alpha = 0.9f),
+                        offset = androidx.compose.ui.geometry.Offset.Zero,
+                        blurRadius = 10f
+                    )
+                )
+            )
+        }
+
+        // ── نشانگر فایل محلی ──
         fileInfo?.let { fi ->
             Box(
                 Modifier
-                    .align(Alignment.TopStart)
-                    .padding(8.dp)
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(10.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black.copy(alpha = 0.55f))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
-                    "🎬 میزبان: ${fi.name}",
+                    "🎬 ${fi.name}",
                     fontSize = 11.sp,
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.widthIn(max = 220.dp)
+                    modifier = Modifier.widthIn(max = 180.dp)
                 )
             }
         }
 
-        // دکمه‌های شناور پایین ویدیو — گرادیانی و شیک
-        Row(
-            Modifier.align(Alignment.BottomEnd).padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // انتخاب فایل محلی
+        // ── دکمه پخش مرکزی بزرگ (فقط وقتی فیلم ست شده) ──
+        if (vm.videoUrl.isNotBlank() || fileInfo != null) {
             Box(
                 Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(Color(0xFF06B6D4), Color(0xFF0EA5E9))))
-                    .clickable(onClick = onPickFile),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.FolderOpen, "فایل محلی", tint = Color.White, modifier = Modifier.size(21.dp))
-            }
-            // تغییر لینک
-            Box(
-                Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(Color(0xFF64748B), Color(0xFF475569))))
-                    .clickable(onClick = onUrlDialog),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Link, "لینک ویدیو", tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-            // پخش/توقف — دکمه اصلی گرادیانی بزرگتر
-            Box(
-                Modifier
-                    .size(56.dp)
+                    .align(Alignment.Center)
+                    .size(64.dp)
                     .clip(CircleShape)
                     .background(Brush.linearGradient(listOf(BrandPurple, BrandCyan)))
                     .clickable(onClick = onPlayPause),
@@ -725,15 +878,142 @@ private fun VideoSection(
             ) {
                 Icon(
                     if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = null,
+                    contentDescription = "پخش/توقف",
                     tint = Color.White,
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
+        } else {
+            // هنوز فیلمی انتخاب نشده
+            Text(
+                "هنوز فیلمی انتخاب نشده — از نوار پایین انتخاب کن",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
 
-        // واکنش‌های لحظه‌ای
+        // ── دکمه تنظیمات پایین-گوشه ──
+        Box(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .padding(12.dp)
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .clickable(onClick = onOpenSettings),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Settings,
+                "تنظیمات پلیر",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        // واکنش‌های لحظه‌ای (فقط از طرف دیگران)
         ReactionBurst(vm)
+    }
+}
+
+// ============================================================
+//  نوار ابزار پایین (زیر ویدیو) — فایل | خط | لینک
+// ============================================================
+@Composable
+private fun VideoToolbar(
+    onPickFile: () -> Unit,
+    onUrlDialog: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(BrandCard.copy(alpha = 0.5f))
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        // انتخاب فیلم از لوکال
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onPickFile)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.FolderOpen, "فایل محلی", tint = BrandCyan, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("فیلم از دستگاه", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BrandText)
+        }
+        // خط جداکننده خوشگل
+        Box(
+            Modifier
+                .width(1.dp)
+                .height(22.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, BrandCyan.copy(alpha = 0.5f), Color.Transparent)))
+        )
+        // تغییر لینک
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onUrlDialog)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Link, "لینک ویدیو", tint = BrandPurple, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("لینک فیلم", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BrandText)
+        }
+    }
+}
+
+// ============================================================
+//  نوتیف پیام‌های جدید چت (بالا سمت راست — مثل سایت)
+// ============================================================
+@Composable
+private fun ChatNotifyStack(
+    messages: List<WsMessage>,
+    myId: String,
+    onOpenChat: () -> Unit
+) {
+    var toasts by remember { mutableStateOf<List<WsMessage>>(emptyList()) }
+    var prevCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(messages.size) {
+        val prev = prevCount
+        prevCount = messages.size
+        if (prev == 0 || messages.size <= prev) return@LaunchedEffect
+        val last = messages.lastOrNull() ?: return@LaunchedEffect
+        if (last.system || (last.senderId.isNotBlank() && last.senderId == myId)) return@LaunchedEffect
+        toasts = (toasts + last).takeLast(3)
+        kotlinx.coroutines.delay(4000)
+        toasts = toasts.filterNot { it.id == last.id }
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        horizontalAlignment = Alignment.End
+    ) {
+        toasts.forEach { m ->
+            Row(
+                Modifier
+                    .padding(top = 6.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(BrandCard.copy(alpha = 0.95f))
+                    .clickable(onClick = onOpenChat)
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AvatarImage(avatarId = m.avatar, size = 22.dp)
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.widthIn(max = 180.dp)) {
+                    Text(m.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandCyan)
+                    Text(m.text, fontSize = 12.sp, color = BrandText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
     }
 }
 

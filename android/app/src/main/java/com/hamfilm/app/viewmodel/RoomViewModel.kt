@@ -32,6 +32,9 @@ class RoomViewModel : ViewModel() {
     val peers = MutableStateFlow<List<WsPeer>>(emptyList())
     val messages = MutableStateFlow<List<WsMessage>>(emptyList())
     val typing = MutableStateFlow<Set<String>>(emptySet())
+    val unread = MutableStateFlow(0)
+    var lastReadCount by mutableStateOf(0)
+        private set
     val socketState = MutableStateFlow<SocketState>(SocketState.Idle)
 
     // پخش هم‌زمان (منبع حقیقت: سرور)
@@ -113,7 +116,17 @@ class RoomViewModel : ViewModel() {
             }
         }
         viewModelScope.launch { s.peers.collect { peers.value = it } }
-        viewModelScope.launch { s.messages.collect { messages.value = it } }
+        viewModelScope.launch {
+            s.messages.collect { list ->
+                val prev = messages.value
+                messages.value = list
+                // شمارش پیام‌های جدید دیگران
+                if (list.size > prev.size) {
+                    val newMsgs = list.drop(prev.size).filter { !it.system && it.senderId != myId }
+                    if (newMsgs.isNotEmpty()) unread.value = unread.value + newMsgs.size
+                }
+            }
+        }
         viewModelScope.launch { s.typing.collect { typing.value = it } }
         viewModelScope.launch { s.roomInfo.collect { info -> info?.let { roomName = it.optString("name", roomName) } } }
         viewModelScope.launch { s.reactions.collect { reactions.emit(it) } }
@@ -170,10 +183,8 @@ class RoomViewModel : ViewModel() {
     }
 
     fun sendReaction(emoji: String) {
-        // مثل سایت: ایموجی هم به‌صورت واکنش شناور می‌رود هم در چت ثبت می‌شود
-        socket?.sendReaction(emoji)
+        // فقط در چت ارسال می‌شود (بدون واکنش شناور روی صفحه)
         socket?.sendChat(emoji)
-        viewModelScope.launch { reactions.emit("شما" to emoji) }
     }
 
     fun notifyTyping(on: Boolean) {
@@ -227,6 +238,10 @@ class RoomViewModel : ViewModel() {
     }
 
     val canControl: Boolean get() = isHost || controlMode == "all"
+
+    fun markChatRead() {
+        unread.value = 0
+    }
 
     fun disconnect() {
         socket?.disconnect()

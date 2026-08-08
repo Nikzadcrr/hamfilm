@@ -123,7 +123,7 @@ fun HamTextField(
 }
 
 // ---------- لیست آواتارهای تصویری (id بک‌اند: a1..a10) ----------
-val AvatarIds = listOf("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10")
+val AvatarIds = listOf("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12", "a13", "a14", "a15")
 
 /** آدرس تصویر آواتار از id (روی همان بک‌اند) */
 fun avatarUrl(id: String): String = ApiConfig.baseUrl.trimEnd('/') + "/avatars/avatar-" + id.removePrefix("a") + ".jpg"
