@@ -159,10 +159,15 @@ fun RoomScreen(
     }
     vm.onRemoteCorrect = { timeSec, playing ->
         val target = (timeSec * 1000).toLong()
-        if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 2000) {
-            player.seekTo(target)
+        // دفاع: اگر سرور state معتبری ندارد (time=0 و paused — اتاق تازه) و ما در حال پخش هستیم،
+        // این اصلاح را نادیده بگیر — در غیر این صورت فیلم بی‌دلیل استپ می‌شود
+        val bogusState = timeSec <= 0.0 && !playing && player.playWhenReady && player.currentPosition > 5000
+        if (!bogusState) {
+            if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 2000) {
+                player.seekTo(target)
+            }
+            player.playWhenReady = playing
         }
-        player.playWhenReady = playing
     }
     vm.onRemoteVideo = { url ->
         if (url.isNotBlank()) {
@@ -282,7 +287,10 @@ fun RoomScreen(
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.lastIndex)
+            // فقط وقتی پنل چت واقعاً باز است اسکرول کن (از اسکرول بی‌مورد و کندی جلوگیری می‌شود)
+            if (chatOpen || fsChatOpen || isLandscape) {
+                listState.animateScrollToItem(messages.lastIndex)
+            }
             vm.markChatRead()
         }
     }
