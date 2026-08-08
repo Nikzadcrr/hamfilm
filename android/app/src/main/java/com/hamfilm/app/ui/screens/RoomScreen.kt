@@ -29,8 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -817,7 +815,7 @@ private fun RoomTopBar(
         ) {
             // ── منوی ۳ خط (همه تنظیمات) ──
             TopBarIconButton(
-                icon = com.hamfilm.app.R.drawable.ic_hf_menu,
+                iconRes = com.hamfilm.app.R.drawable.ic_hf_menu,
                 contentDescription = "منوی اتاق",
                 tint = Color(0xFFBFDBFE),
                 bg = Color(0xFF3B82F6).copy(alpha = 0.18f),
@@ -899,7 +897,7 @@ private fun RoomTopBar(
             // ── دکمه قفل (میزبان) ──
             if (vm.isHost) {
                 TopBarIconButton(
-                    icon = if (locked) com.hamfilm.app.R.drawable.ic_hf_lock else com.hamfilm.app.R.drawable.ic_hf_lock_open,
+                    iconRes = if (locked) com.hamfilm.app.R.drawable.ic_hf_lock else com.hamfilm.app.R.drawable.ic_hf_lock_open,
                     contentDescription = "قفل اتاق",
                     tint = if (locked) Color(0xFFFCA5A5) else Color(0xFFFCD34D),
                     bg = if (locked) Color(0xFFF43F5E).copy(alpha = 0.18f) else Color(0xFFF59E0B).copy(alpha = 0.15f),
@@ -910,7 +908,7 @@ private fun RoomTopBar(
 
             // ── اشتراک‌گذاری ──
             TopBarIconButton(
-                icon = com.hamfilm.app.R.drawable.ic_hf_share,
+                iconRes = com.hamfilm.app.R.drawable.ic_hf_share,
                 contentDescription = "دعوت دوستان",
                 tint = BrandCyan,
                 bg = Color(0xFF22D3EE).copy(alpha = 0.12f),
@@ -1096,7 +1094,7 @@ private fun VideoSection(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    if (isFullscreen) com.hamfilm.app.R.drawable.ic_hf_fullscreen_exit else com.hamfilm.app.R.drawable.ic_hf_fullscreen,
+                    if (isFullscreen) painterResource(com.hamfilm.app.R.drawable.ic_hf_fullscreen_exit) else painterResource(com.hamfilm.app.R.drawable.ic_hf_fullscreen),
                     if (isFullscreen) "خروج از تمام‌صفحه" else "تمام‌صفحه",
                     tint = if (isFullscreen) Color(0xFF7DD3FC) else Color(0xFFE879F9),
                     modifier = Modifier.size(21.dp)
@@ -1598,7 +1596,7 @@ private fun MessageRow(m: WsMessage, isMe: Boolean, seen: Boolean) {
                     if (isMe) {
                         Spacer(Modifier.height(2.dp))
                         Icon(
-                            if (seen) com.hamfilm.app.R.drawable.ic_hf_done_all else com.hamfilm.app.R.drawable.ic_hf_done,
+                            if (seen) painterResource(com.hamfilm.app.R.drawable.ic_hf_done_all) else painterResource(com.hamfilm.app.R.drawable.ic_hf_done),
                             contentDescription = if (seen) "دیده شد" else "ارسال شد",
                             tint = if (seen) Color(0xFF81C784) else Color.White.copy(0.55f),
                             modifier = Modifier.size(13.dp)
@@ -1663,7 +1661,7 @@ private fun MembersDialog(
                         if (isHost && !isMe) {
                             IconButton(onClick = { onMute(p.id, true) }) {
                                 Icon(
-                                    com.hamfilm.app.R.drawable.ic_hf_mic_off,
+                                    painterResource(com.hamfilm.app.R.drawable.ic_hf_mic_off),
                                     contentDescription = "سکوت",
                                     tint = BrandTextMuted,
                                     modifier = Modifier.size(18.dp)
