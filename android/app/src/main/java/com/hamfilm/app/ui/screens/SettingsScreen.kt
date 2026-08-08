@@ -8,6 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import com.hamfilm.app.data.ApiConfig
 import com.hamfilm.app.data.api.ApiClient
 import com.hamfilm.app.data.api.AppRepository
@@ -38,7 +41,7 @@ fun SettingsScreen(nav: NavHostController) {
                 .padding(20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(androidx.compose.material.icons.Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
                 Text("⚙️ تنظیمات سرور", style = MaterialTheme.typography.headlineSmall)
             }
             Spacer(Modifier.height(16.dp))

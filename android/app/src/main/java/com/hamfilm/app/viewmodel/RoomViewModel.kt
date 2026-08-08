@@ -100,7 +100,7 @@ class RoomViewModel : ViewModel() {
                     "play" -> { isPlaying = true; onRemotePlay?.invoke(c.timeMs) }
                     "pause" -> { isPlaying = false; onRemotePause?.invoke(c.timeMs) }
                     "seek" -> { onRemoteSeek?.invoke(c.timeMs) }
-                    "video" -> { videoUrl = c.url; isPlaying = true; onRemoteVideo?.invoke(c.url) }
+                    "video" -> { this.videoUrl = c.url; this.isPlaying = true; onRemoteVideo?.invoke(c.url) }
                 }
             }
         }

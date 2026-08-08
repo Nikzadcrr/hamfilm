@@ -25,6 +25,12 @@ import com.hamfilm.app.ui.components.*
 import com.hamfilm.app.ui.navigation.Routes
 import com.hamfilm.app.ui.theme.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Search
 
 @Composable
 fun ArchiveScreen(nav: NavHostController) {
@@ -56,7 +62,7 @@ fun ArchiveScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(androidx.compose.material.icons.Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
                 Text("🎞️ آرشیو فیلم‌ها", style = MaterialTheme.typography.headlineSmall)
             }
 
@@ -67,7 +73,7 @@ fun ArchiveScreen(nav: NavHostController) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 placeholder = { Text("جستجوی فیلم…", color = BrandTextMuted) },
                 shape = RoundedCornerShape(14.dp),
-                leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Search, null, tint = BrandTextMuted) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = BrandTextMuted) },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandCyan, unfocusedBorderColor = BrandCardLight)
             )
@@ -193,7 +199,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                             )
                         )
                         IconButton(onClick = { nav.popBackStack() }, modifier = Modifier.statusBarsPadding()) {
-                            Icon(androidx.compose.material.icons.Icons.Default.ArrowForward, "بازگشت", tint = Color.White)
+                            Icon(Icons.Default.ArrowForward, "بازگشت", tint = Color.White)
                         }
                     }
                 }

@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
 import coil.compose.AsyncImage
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.api.AppRepository

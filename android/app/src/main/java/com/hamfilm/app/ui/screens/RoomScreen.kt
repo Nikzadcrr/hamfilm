@@ -34,6 +34,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
+import androidx.compose.foundation.lazy.LazyRow
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.ws.*
 import com.hamfilm.app.ui.components.*
@@ -372,7 +373,7 @@ private fun PeerChip(p: WsPeer, isMe: Boolean) {
     Row(
         Modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (isMe) BrandGradientSoft else BrandCard)
+            .background(if (isMe) BrandPurple.copy(alpha = 0.22f) else BrandCard)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

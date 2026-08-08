@@ -14,6 +14,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Send
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.api.AppRepository
 import com.hamfilm.app.data.model.Ticket
@@ -41,11 +46,11 @@ fun TicketsScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(androidx.compose.material.icons.Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
                 Text("🎟️ تیکت‌های من", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
                 if (TokenStore.token.isNotBlank()) {
                     FilledIconButton(onClick = { showNew = true }, colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Add, "تیکت جدید", tint = androidx.compose.ui.graphics.Color.White)
+                        Icon(Icons.Default.Add, "تیکت جدید", tint = androidx.compose.ui.graphics.Color.White)
                     }
                 }
             }
@@ -184,7 +189,7 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
         } else {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { nav.popBackStack() }) { Icon(androidx.compose.material.icons.Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
+                    IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.ArrowForward, "بازگشت", tint = BrandTextMuted) }
                     Text(d.subject, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1)
                     StatusBar(if (d.status == "open") "باز" else "بسته", if (d.status == "open") BrandGreen else BrandTextMuted)
                 }
@@ -245,7 +250,7 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
                             },
                             colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)
                         ) {
-                            Icon(androidx.compose.material.icons.Icons.Default.Send, null, tint = androidx.compose.ui.graphics.Color.White)
+                            Icon(Icons.Default.Send, null, tint = androidx.compose.ui.graphics.Color.White)
                         }
                     }
                 }

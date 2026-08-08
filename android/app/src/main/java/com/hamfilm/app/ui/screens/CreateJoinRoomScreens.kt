@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.compose.ui.unit.sp
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.ui.components.*
 import com.hamfilm.app.ui.navigation.Routes

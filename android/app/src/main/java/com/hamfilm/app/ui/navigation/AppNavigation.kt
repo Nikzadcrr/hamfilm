@@ -49,7 +49,7 @@ fun AppNavigation(startDestination: String = Routes.HOME) {
             )
         ) { entry ->
             RoomScreen(
-                navController = navController,
+                nav = navController,
                 roomCode = entry.arguments?.getString("code") ?: "",
                 initialPassword = entry.arguments?.getString("password") ?: "",
                 initialVideoUrl = entry.arguments?.getString("videoUrl") ?: ""
