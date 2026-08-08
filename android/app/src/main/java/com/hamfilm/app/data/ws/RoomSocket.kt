@@ -137,8 +137,8 @@ class RoomSocket(
     private var avatar: String = ""
     private var password: String = ""
 
-    /** داده زنده پلیر برای پینگ همگام‌سازی: (در حال پخش؟, موقعیت به میلی‌ثانیه) */
-    var playbackSnapshot: (() -> Pair<Boolean, Long>)? = null
+    /** داده زنده پلیر برای پینگ همگام‌سازی: (در حال پخش؟, موقعیت به میلی‌ثانیه, بافرینگ/تمام‌شده؟) */
+    var playbackSnapshot: (() -> Triple<Boolean, Long, Boolean>)? = null
 
     // ---------- اتصال ----------
     fun connect(name: String, avatar: String, password: String = "") {
@@ -153,8 +153,8 @@ class RoomSocket(
             while (isActive) {
                 delay(15_000)
                 if (_state.value == SocketState.Connected) {
-                    val (playing, posMs) = playbackSnapshot?.invoke() ?: (false to 0L)
-                    sendPing(posMs, playing)
+                    val (playing, posMs, buffering) = playbackSnapshot?.invoke() ?: Triple(false, 0L, false)
+                    sendPing(posMs, playing, buffering)
                 }
             }
         }
@@ -490,13 +490,13 @@ class RoomSocket(
         })
     }
 
-    fun sendPing(positionMs: Long, playing: Boolean) {
+    fun sendPing(positionMs: Long, playing: Boolean, buffering: Boolean) {
         send(JSONObject().apply {
             put("type", "ping")
             put("time", positionMs / 1000.0)      // موقعیت واقعی پخش به ثانیه
             put("playing", playing)
             put("t", System.currentTimeMillis())
-            put("buffering", false)
+            put("buffering", buffering)           // جلوگیری از اصلاح بی‌مورد حین بافرینگ/پایان فیلم
         })
     }
 

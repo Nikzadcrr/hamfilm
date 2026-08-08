@@ -253,9 +253,10 @@ class RoomViewModel : ViewModel() {
      * اتصال داده‌های زنده پلیر به پینگ همگام‌سازی.
      * هر ۱۵ ثانیه موقعیت واقعی پخش به سرور می‌رود تا (۱) کاربر از لیست اعضا حذف نشود
      * و (۲) اگر از بقیه عقب/جلو افتاد، سرور پیام correct بفرستد.
+     * buffering = پلیر در حال بافرینگ است یا فیلم تمام شده (اصلاح همگام ارسال نشود)
      */
-    fun bindPlayerToPing(playingProvider: () -> Boolean, positionProvider: () -> Long) {
-        socket?.playbackSnapshot = { playingProvider() to positionProvider() }
+    fun bindPlayerToPing(playingProvider: () -> Boolean, positionProvider: () -> Long, bufferingProvider: () -> Boolean) {
+        socket?.playbackSnapshot = { Triple(playingProvider(), positionProvider(), bufferingProvider()) }
     }
 
     fun markChatRead() {

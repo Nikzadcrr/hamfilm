@@ -109,7 +109,8 @@ fun RoomScreen(
             // داده زنده پلیر برای پینگ همگام‌سازی (هر ۱۵ ثانیه)
             vm.bindPlayerToPing(
                 playingProvider = { player.playWhenReady },
-                positionProvider = { player.currentPosition }
+                positionProvider = { player.currentPosition },
+                bufferingProvider = { player.playWhenReady && !player.isPlaying }
             )
         }
     }
@@ -313,6 +314,17 @@ fun RoomScreen(
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 vm.onLocalPlayStateChange(isPlaying)
+            }
+
+            // پایان فیلم: پخش را متوقف کن و اگر میزبان/کنترل‌دار هستی به بقیه هم اعلام کن
+            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    player.playWhenReady = false
+                    if (vm.canControl) {
+                        val endMs = if (player.duration > 0) player.duration else player.currentPosition
+                        vm.setPlayback(false, endMs)
+                    }
+                }
             }
         }
         player.addListener(listener)
