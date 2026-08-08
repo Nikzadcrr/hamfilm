@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import okhttp3.*
 import org.json.JSONObject
+
 // ---------- مدل‌های بلادرنگ (مطابق پروتکل بک‌اند اصلی هم‌فیلم) ----------
 data class WsPeer(
     val id: String = "",
@@ -152,15 +153,7 @@ class RoomSocket(
             while (isActive) {
                 delay(15_000)
                 if (_state.value == SocketState.Connected) {
-                    // ⚠️ مهم: دسترسی به ExoPlayer فقط از ترد اصلی مجاز است (در غیر این صورت
-                    // IllegalStateException: Player is accessed on the wrong thread → کرش اپ)
-                    val (playing, posMs, buffering) = withContext(Dispatchers.Main) {
-                        try {
-                            playbackSnapshot?.invoke() ?: Triple(false, 0L, false)
-                        } catch (_: Exception) {
-                            Triple(false, 0L, true)
-                        }
-                    }
+                    val (playing, posMs, buffering) = playbackSnapshot?.invoke() ?: Triple(false, 0L, false)
                     sendPing(posMs, playing, buffering)
                 }
             }
@@ -232,13 +225,6 @@ class RoomSocket(
                         updatedAt = state.optLong("updatedAt"),
                         speed = state.optDouble("speed", 1.0)
                     )
-                    // اگر اتاق «تازه» است (هنوز کسی پخش را روی سرور شروع نکرده) ولی ویدیو دارد،
-                    // کلاینت به‌صورت خودکار پخش می‌کند → به سرور اعلام کن تا state سرور واقعی شود
-                    // (در غیر این صورت پینگ بعدی پیام correct با time=0 می‌فرستد و فیلم استپ می‌شود)
-                    val freshRoom = !state.optBoolean("playing") && state.optDouble("time") <= 0.0
-                    if (freshRoom && _videoUrl.value.isNotBlank()) {
-                        sendPlay(0)
-                    }
                 }
                 val lf = json.optJSONObject("localFile")
                 if (lf != null && lf.length() > 0) {

@@ -134,19 +134,62 @@ fun ProfileScreen(nav: NavHostController) {
             Modifier.fillMaxSize().statusBarsPadding().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(30.dp))
-            AvatarChip(TokenStore.avatar, size = 84.dp)
-            Spacer(Modifier.height(12.dp))
-            Text(TokenStore.name.ifBlank { "مهمان" }, style = MaterialTheme.typography.titleLarge, color = BrandText)
+            Spacer(Modifier.height(20.dp))
 
-            Spacer(Modifier.height(14.dp))
-            val active = sub != null && sub!!.endsAt > System.currentTimeMillis()
-            StatusBar(
-                if (active) "اشتراک فعال تا " + java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale.getDefault()).format(java.util.Date(sub!!.endsAt)) else "بدون اشتراک فعال",
-                if (active) BrandGreen else BrandTextMuted
-            )
+            // ── کارت پروفایل: آواتار + اسم + وضعیت ──
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // قاب گرادیانی دور آواتار
+                    Box(
+                        Modifier
+                            .size(104.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(BrandPurple.copy(alpha = 0.55f), BrandCyan.copy(alpha = 0.45f))
+                                )
+                            )
+                            .padding(3.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(29.dp))
+                                .background(Color(0xFF0E0E1C))
+                                .padding(6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AvatarChip(TokenStore.avatar, size = 86.dp)
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        TokenStore.name.ifBlank { "مهمان" },
+                        style = MaterialTheme.typography.titleLarge,
+                        color = BrandText,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "🎬 عضو هم‌فیلم",
+                        fontSize = 12.sp,
+                        color = BrandTextMuted
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    val active = sub != null && sub!!.endsAt > System.currentTimeMillis()
+                    StatusBar(
+                        if (active) "💎 اشتراک فعال تا " + java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale.getDefault()).format(java.util.Date(sub!!.endsAt)) else "بدون اشتراک فعال",
+                        if (active) BrandGreen else BrandTextMuted
+                    )
+                }
+            }
 
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(20.dp))
             GlassCard(Modifier.fillMaxWidth()) {
                 MenuRow("🎟️ تیکت‌های پشتیبانی") { nav.navigate(Routes.TICKETS) }
                 HorizontalDivider(color = BrandCardLight)

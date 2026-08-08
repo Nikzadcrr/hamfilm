@@ -12,8 +12,8 @@ android {
         applicationId = "com.hamfilm.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.4.6"
+        versionCode = 10
+        versionName = "1.4.5"
         // آدرس پیش‌فرض بک‌اند — کاربر می‌تواند از تنظیمات، بین کلادفلر و VPS جابه‌جا کند
         buildConfigField("String", "DEFAULT_API_BASE", "\"https://hamfilm-worker.ai-showcase-shir.workers.dev/\"")
         vectorDrawables { useSupportLibrary = true }
