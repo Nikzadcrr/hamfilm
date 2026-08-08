@@ -210,7 +210,7 @@ fun RoomScreen(
                     onPlayPause = ::onPlayPause,
                     onPickFile = ::pickLocalFile,
                     onUrlDialog = { urlDialogOpen = true },
-                    landscape = true
+                    modifier = Modifier.weight(1f)
                 )
             }
             // چت کنار صفحه
@@ -250,7 +250,7 @@ fun RoomScreen(
                 onPlayPause = ::onPlayPause,
                 onPickFile = ::pickLocalFile,
                 onUrlDialog = { urlDialogOpen = true },
-                landscape = false
+                modifier = Modifier.aspectRatio(16f / 9f)
             )
             // نوار اعضا
             if (peers.isNotEmpty()) {
@@ -401,12 +401,11 @@ private fun VideoSection(
     onPlayPause: () -> Unit,
     onPickFile: () -> Unit,
     onUrlDialog: () -> Unit,
-    landscape: Boolean
+    modifier: Modifier = Modifier
 ) {
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
-            .then(if (landscape) Modifier.weight(1f) else Modifier.aspectRatio(16f / 9f))
             .background(Color.Black)
     ) {
         AndroidView(

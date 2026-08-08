@@ -72,9 +72,9 @@ class RoomViewModel : ViewModel() {
     }
 
     /** اتصال WebSocket به اتاق */
-    fun connect(code: String, name: String, avatar: String, password: String, videoUrl: String = "") {
+    fun connect(code: String, name: String, avatar: String, password: String, initialVideoUrl: String = "") {
         roomCode = code
-        this.videoUrl = videoUrl
+        this.videoUrl = initialVideoUrl
         val s = RoomSocket(code).also {
             socket = it
             it.connect(name, avatar, password)
