@@ -260,9 +260,8 @@ fun RoomScreen(
         try {
             val playerView = playerViewRef
             if (playerView != null) {
-                val stv = androidx.media3.ui.SubtitleView(context)
-                stv.setStyle(com.hamfilm.app.ui.components.buildCaptionStyle(index))
-                playerView.setSubtitleView(stv)
+                // زیرنویس داخلی پلیر — فقط استایل آن را عوض می‌کنیم
+                playerView.subtitleView?.setStyle(com.hamfilm.app.ui.components.buildCaptionStyle(index))
             }
         } catch (_: Exception) {}
     }
