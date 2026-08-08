@@ -1,5 +1,10 @@
 package com.hamfilm.app.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -34,7 +39,14 @@ object Routes {
 @Composable
 fun AppNavigation(startDestination: String = Routes.HOME) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = { slideInVertically(tween(380)) { it / 6 } + fadeIn(tween(380)) },
+        exitTransition = { fadeOut(tween(280)) },
+        popEnterTransition = { fadeIn(tween(280)) },
+        popExitTransition = { slideOutVertically(tween(320)) { it / 6 } + fadeOut(tween(280)) }
+    ) {
         composable(Routes.HOME) { HomeScreen(navController) }
         composable(Routes.LOGIN) { LoginScreen(navController) }
         composable(Routes.REGISTER) { RegisterScreen(navController) }
@@ -49,7 +61,7 @@ fun AppNavigation(startDestination: String = Routes.HOME) {
             )
         ) { entry ->
             RoomScreen(
-                nav = navController,
+                navController = navController,
                 roomCode = entry.arguments?.getString("code") ?: "",
                 initialPassword = entry.arguments?.getString("password") ?: "",
                 initialVideoUrl = entry.arguments?.getString("videoUrl") ?: ""

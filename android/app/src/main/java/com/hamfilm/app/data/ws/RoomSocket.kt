@@ -32,6 +32,15 @@ data class PlaybackControl(
     val byUserId: String = ""
 )
 
+/** فایل محلی در حال پخش (همگام‌سازی فایل گوشی) */
+data class WsFileInfo(
+    val name: String = "",
+    val size: Long = 0L,
+    val hash: String = "",
+    val byUserId: String = "",
+    val byUserName: String = ""
+)
+
 sealed class SocketState {
     object Idle : SocketState()
     object Connecting : SocketState()
@@ -41,7 +50,8 @@ sealed class SocketState {
 
 /**
  * کلاینت WebSocket اتاق — دقیقاً با همان پیام‌های سایت هم‌فیلم کار می‌کند:
- * join / leave / peers / chat / reaction / typing / control / system / presence / rename / kick / mute / ping
+ * join / leave / peers / chat / reaction / typing / control / system /
+ * presence / rename / kick / mute / lock / file / ping
  */
 class RoomSocket(
     private val roomCode: String,
@@ -67,7 +77,7 @@ class RoomSocket(
     private val _control = MutableSharedFlow<PlaybackControl>(extraBufferCapacity = 16)
     val control: SharedFlow<PlaybackControl> = _control
 
-    private val _reactions = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 32) // (userName, emoji)
+    private val _reactions = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 32)
     val reactions: SharedFlow<Pair<String, String>> = _reactions
 
     private val _typing = MutableStateFlow<Set<String>>(emptySet())
@@ -75,6 +85,9 @@ class RoomSocket(
 
     private val _roomInfo = MutableStateFlow<JSONObject?>(null)
     val roomInfo: StateFlow<JSONObject?> = _roomInfo
+
+    private val _fileInfo = MutableStateFlow<WsFileInfo?>(null)
+    val fileInfo: StateFlow<WsFileInfo?> = _fileInfo
 
     private val _kicked = MutableSharedFlow<Boolean>(extraBufferCapacity = 4)
     val kicked: SharedFlow<Boolean> = _kicked
@@ -209,10 +222,19 @@ class RoomSocket(
                     byUserId = json.optString("by", "")
                 ))
             }
+            "file" -> {
+                _fileInfo.value = WsFileInfo(
+                    name = json.optString("name"),
+                    size = json.optLong("size", 0L),
+                    hash = json.optString("hash"),
+                    byUserId = json.optString("by"),
+                    byUserName = json.optString("byName")
+                )
+            }
             "kicked" -> {
                 if (json.optBoolean("you", false)) _kicked.tryEmit(true)
             }
-            "presence" -> { /* برای همگام‌سازی فایل محلی — فاز ۲ */ }
+            "presence" -> { /* برای همگام‌سازی فایل محلی */ }
             "ping" -> send(JSONObject().put("type", "pong"))
         }
     }
@@ -249,6 +271,16 @@ class RoomSocket(
             put("mode", mode)
             put("time", timeMs)
             if (url.isNotBlank()) put("url", url)
+        })
+    }
+
+    /** اعلام فایل محلی در حال پخش به همه اعضا */
+    fun sendFile(name: String, size: Long, hash: String = "") {
+        send(JSONObject().apply {
+            put("type", "file")
+            put("name", name)
+            put("size", size)
+            put("hash", hash)
         })
     }
 

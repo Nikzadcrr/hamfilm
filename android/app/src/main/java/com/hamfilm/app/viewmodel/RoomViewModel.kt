@@ -45,6 +45,11 @@ class RoomViewModel : ViewModel() {
     // واکنش‌های لحظه‌ای
     val reactions = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 32)
 
+    // فایل محلی در حال پخش (از حافظه گوشی)
+    var localFileName by mutableStateOf<String?>(null)
+        private set
+    val fileInfo = MutableStateFlow<WsFileInfo?>(null)
+
     val myId: String get() = socket?.myId ?: ""
     val isHost: Boolean get() = socket?.isHost ?: false
 
@@ -67,9 +72,9 @@ class RoomViewModel : ViewModel() {
     }
 
     /** اتصال WebSocket به اتاق */
-    fun connect(code: String, name: String, avatar: String, password: String, initialVideoUrl: String = "") {
+    fun connect(code: String, name: String, avatar: String, password: String, videoUrl: String = "") {
         roomCode = code
-        this.videoUrl = initialVideoUrl
+        this.videoUrl = videoUrl
         val s = RoomSocket(code).also {
             socket = it
             it.connect(name, avatar, password)
@@ -87,6 +92,7 @@ class RoomViewModel : ViewModel() {
         viewModelScope.launch { s.typing.collect { typing.value = it } }
         viewModelScope.launch { s.roomInfo.collect { info -> info?.let { roomName = it.optString("name", roomName) } } }
         viewModelScope.launch { s.reactions.collect { reactions.emit(it) } }
+        viewModelScope.launch { s.fileInfo.collect { fileInfo.value = it } }
         viewModelScope.launch {
             s.kicked.collect {
                 kickedOut = true
@@ -139,7 +145,15 @@ class RoomViewModel : ViewModel() {
 
     fun changeVideo(url: String) {
         videoUrl = url
+        localFileName = null
         socket?.sendControl("video", 0L, url)
+    }
+
+    /** پخش فایل از حافظه گوشی + اعلام به بقیه */
+    fun shareLocalFile(name: String, size: Long) {
+        localFileName = name
+        socket?.sendFile(name, size)
+        socket?.sendControl("play", 0L)
     }
 
     fun rename(name: String) {

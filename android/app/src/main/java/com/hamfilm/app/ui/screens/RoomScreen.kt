@@ -1,12 +1,29 @@
 package com.hamfilm.app.ui.screens
 
+import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.content.res.Configuration
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.view.ViewGroup
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,22 +36,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
-import androidx.compose.foundation.lazy.LazyRow
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.ws.*
 import com.hamfilm.app.ui.components.*
@@ -47,7 +66,9 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 private val Emojis = listOf("❤️", "😂", "😮", "👍", "😢", "🔥", "🎬", "🍿")
+private val Speeds = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoomScreen(
     nav: NavHostController,
@@ -58,20 +79,17 @@ fun RoomScreen(
     val vm: RoomViewModel = viewModel()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val haptic = LocalHapticFeedback.current
+    val config = LocalConfiguration.current
+    val isLandscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     // ---------- ExoPlayer ----------
     val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            repeatMode = Player.REPEAT_MODE_OFF
-        }
+        ExoPlayer.Builder(context).build().apply { repeatMode = Player.REPEAT_MODE_OFF }
     }
+    DisposableEffect(player) { onDispose { player.release() } }
 
-    DisposableEffect(player) {
-        onDispose { player.release() }
-    }
-
-    // اتصال به اتاق
+    // ---------- اتصال ----------
     var connected by remember { mutableStateOf(false) }
     LaunchedEffect(roomCode) {
         if (!connected) {
@@ -95,9 +113,9 @@ fun RoomScreen(
         }
     }
 
-    // کنترل‌های راه دور → پلیر
-    vm.onRemotePlay = { time -> player.playWhenReady = true }
-    vm.onRemotePause = { time -> player.playWhenReady = false }
+    // کنترل راه دور → پلیر
+    vm.onRemotePlay = { player.playWhenReady = true }
+    vm.onRemotePause = { player.playWhenReady = false }
     vm.onRemoteSeek = { time -> if (time > 0) player.seekTo(time) }
     vm.onRemoteVideo = { url ->
         if (url.isNotBlank()) {
@@ -107,25 +125,51 @@ fun RoomScreen(
         }
     }
 
-    // اکشن کاربر → ارسال به اتاق + پخش
-    fun onUserPlay() { player.playWhenReady = true; vm.togglePlay(player.currentPosition) }
-    fun onUserPause() { player.playWhenReady = false; vm.togglePlay(player.currentPosition) }
-    fun onUserSeek(pos: Long) { player.seekTo(pos); vm.seekTo(pos) }
-
-    // دنبال کردن موقعیت پخش
-    LaunchedEffect(player) {
-        while (true) {
-            delay(500)
-            if (player.duration > 0) {
-                vm.updatePosition(player.currentPosition, player.duration)
+    // ---------- تمام‌صفحه ----------
+    var fullscreen by remember { mutableStateOf(false) }
+    val activity = context as? Activity
+    DisposableEffect(fullscreen) {
+        activity?.window?.let { w ->
+            val ctrl = WindowInsetsControllerCompat(w, w.decorView)
+            if (fullscreen) {
+                ctrl.hide(WindowInsetsCompat.Type.systemBars())
+                ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                ctrl.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        onDispose {
+            activity?.window?.let { w ->
+                WindowInsetsControllerCompat(w, w.decorView).show(WindowInsetsCompat.Type.systemBars())
             }
         }
     }
 
-    // وضعیت‌های UI
-    var chatOpen by remember { mutableStateOf(false) }
-    var membersOpen by remember { mutableStateOf(false) }
+    // ---------- پیکر فایل محلی ----------
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            val name = context.queryDisplayName(it)
+            val size = context.querySize(it)
+            player.setMediaItem(MediaItem.fromUri(it))
+            player.prepare()
+            player.playWhenReady = true
+            vm.shareLocalFile(name, size)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+
+    fun pickLocalFile() {
+        filePicker.launch(arrayOf("video/*", "audio/*"))
+    }
+
+    // ---------- state ها ----------
     var chatText by remember { mutableStateOf("") }
+    var chatOpen by remember { mutableStateOf(!isLandscape) }
+    var membersOpen by remember { mutableStateOf(false) }
+    var optionsOpen by remember { mutableStateOf(false) }
+    var urlDialogOpen by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     var typingJob by remember { mutableStateOf<Job?>(null) }
 
@@ -133,175 +177,110 @@ fun RoomScreen(
     val messages by vm.messages.collectAsState()
     val typing by vm.typing.collectAsState()
     val socketState by vm.socketState.collectAsState()
+    val fileInfo by vm.fileInfo.collectAsState()
 
-    // اسکرول خودکار چت
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
-    GradientBackground(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            // ---------- هدر اتاق ----------
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { vm.disconnect(); nav.popBackStack() }) {
-                    Icon(Icons.Default.ArrowForward, "خروج", tint = BrandTextMuted)
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(vm.roomName.ifBlank { "اتاق $roomCode" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("کد: $roomCode", fontSize = 12.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.width(10.dp))
-                        when (socketState) {
-                            is SocketState.Connected -> StatusBar("متصل", BrandGreen, Modifier)
-                            is SocketState.Connecting -> StatusBar("در حال اتصال…", BrandAmber, Modifier)
-                            else -> StatusBar("قطع", BrandDanger, Modifier)
-                        }
-                    }
-                }
-                IconButton(onClick = { membersOpen = true }) {
-                    BadgedBox(badge = {
-                        if (peers.size > 0) Badge { Text("${peers.size}") }
-                    }) {
-                        Icon(Icons.Default.People, "اعضا", tint = BrandText)
-                    }
-                }
-                IconButton(onClick = { chatOpen = true }) {
-                    Icon(Icons.Default.ChatBubbleOutline, "چت", tint = BrandText)
-                }
-            }
+    fun onPlayPause() {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        player.playWhenReady = !player.playWhenReady
+        vm.togglePlay(player.currentPosition)
+    }
 
-            // ---------- پلیر ویدیو ----------
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color.Black)
-            ) {
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            this.player = player
-                            useController = true
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
+    // ---------- چیدمان ----------
+    if (isLandscape) {
+        // حالت افقی: ویدیو سمت راست، چت کنارش (پنل چت همیشه باز)
+        Row(Modifier.fillMaxSize().background(BrandBg)) {
+            Column(Modifier.weight(1.5f).fillMaxHeight()) {
+                RoomTopBar(
+                    vm = vm, roomCode = roomCode, socketState = socketState,
+                    fullscreen = fullscreen,
+                    onBack = { vm.disconnect(); nav.popBackStack() },
+                    onFullscreen = { fullscreen = !fullscreen },
+                    onShare = { shareRoomCode(context, roomCode) },
+                    onCopy = { copyRoomCode(context, roomCode) },
+                    onOptions = { optionsOpen = true },
+                    onMembers = { membersOpen = true }
                 )
-
-                // دکمه‌های کنترل همگام
-                Row(
-                    Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FloatingActionButton(
-                        onClick = { if (player.isPlaying) onUserPause() else onUserPlay() },
-                        modifier = Modifier.size(44.dp),
-                        containerColor = BrandPurple,
-                        shape = CircleShape
-                    ) {
-                        Icon(
-                            if (player.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.White
-                        )
-                    }
-                }
-
-                // ---------- واکنش‌های لحظه‌ای (Emoji Blast) ----------
-                ReactionBurst(vm)
+                VideoSection(
+                    player = player, vm = vm, fileInfo = fileInfo,
+                    isPlaying = player.isPlaying,
+                    onPlayPause = ::onPlayPause,
+                    onPickFile = ::pickLocalFile,
+                    onUrlDialog = { urlDialogOpen = true },
+                    landscape = true
+                )
             }
-
-            // ---------- نوار اعضا ----------
+            // چت کنار صفحه
+            ChatPanel(
+                messages = messages, typing = typing, listState = listState,
+                chatText = chatText, onChatText = { chatText = it },
+                onSend = {
+                    vm.sendChat(chatText); chatText = ""
+                    vm.notifyTyping(false)
+                },
+                onTyping = { on -> vm.notifyTyping(on) },
+                onReaction = { vm.sendReaction(it) },
+                myId = vm.myId,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(BrandCard.copy(alpha = 0.6f))
+                    .animateContentSize()
+            )
+        }
+    } else {
+        // حالت عمودی
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            RoomTopBar(
+                vm = vm, roomCode = roomCode, socketState = socketState,
+                fullscreen = fullscreen,
+                onBack = { vm.disconnect(); nav.popBackStack() },
+                onFullscreen = { fullscreen = !fullscreen },
+                onShare = { shareRoomCode(context, roomCode) },
+                onCopy = { copyRoomCode(context, roomCode) },
+                onOptions = { optionsOpen = true },
+                onMembers = { membersOpen = true }
+            )
+            VideoSection(
+                player = player, vm = vm, fileInfo = fileInfo,
+                isPlaying = player.isPlaying,
+                onPlayPause = ::onPlayPause,
+                onPickFile = ::pickLocalFile,
+                onUrlDialog = { urlDialogOpen = true },
+                landscape = false
+            )
+            // نوار اعضا
             if (peers.isNotEmpty()) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    items(peers, key = { it.id }) { p ->
-                        PeerChip(p, isMe = p.id == vm.myId)
-                    }
+                    items(peers, key = { it.id }) { p -> PeerChip(p, isMe = p.id == vm.myId) }
                 }
             }
-
-            // ---------- پیش‌نمایش چت ----------
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            // چت
+            AnimatedVisibility(
+                visible = chatOpen,
+                enter = slideInVertically(tween(350)) { it / 3 } + fadeIn(tween(350)),
+                exit = slideOutVertically(tween(250)) { it / 3 } + fadeOut(tween(250))
             ) {
-                items(messages, key = { it.id }) { m -> MessageRow(m, isMe = m.userId == vm.myId) }
-                if (typing.isNotEmpty()) {
-                    item { Text("✍️ ${typing.size} نفر در حال تایپ…", fontSize = 12.sp, color = BrandTextMuted) }
-                }
-            }
-
-            // ---------- ورودی چت ----------
-            Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // واکنش‌های سریع
-                LazyRow(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(Emojis) { e ->
-                        Text(
-                            e,
-                            fontSize = 20.sp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { vm.sendReaction(e) }
-                                .padding(6.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                OutlinedTextField(
-                    value = chatText,
-                    onValueChange = {
-                        chatText = it
-                        vm.notifyTyping(it.isNotBlank())
-                        typingJob?.cancel()
-                        if (it.isNotBlank()) {
-                            typingJob = scope.launch {
-                                delay(2000)
-                                vm.notifyTyping(false)
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("پیام بنویسید…", color = BrandTextMuted) },
-                    shape = RoundedCornerShape(24.dp),
-                    maxLines = 2,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BrandCyan,
-                        unfocusedBorderColor = BrandCardLight
-                    )
+                ChatPanel(
+                    messages = messages, typing = typing, listState = listState,
+                    chatText = chatText, onChatText = { chatText = it },
+                    onSend = { vm.sendChat(chatText); chatText = ""; vm.notifyTyping(false) },
+                    onTyping = { on -> vm.notifyTyping(on) },
+                    onReaction = { vm.sendReaction(it) },
+                    myId = vm.myId,
+                    modifier = Modifier.fillMaxSize()
                 )
-                Spacer(Modifier.width(8.dp))
-                FilledIconButton(
-                    onClick = {
-                        vm.sendChat(chatText)
-                        chatText = ""
-                        vm.notifyTyping(false)
-                    },
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)
-                ) {
-                    Icon(Icons.Default.Send, "ارسال", tint = Color.White)
-                }
             }
         }
     }
 
-    // ---------- دیالوگ اعضا و کنترل میزبان ----------
+    // ---------- دیالوگ اعضا ----------
     if (membersOpen) {
         MembersDialog(
             peers = peers,
@@ -313,14 +292,43 @@ fun RoomScreen(
         )
     }
 
-    // ---------- اخراج شدن ----------
+    // ---------- شیت آپشن‌ها ----------
+    if (optionsOpen) {
+        RoomOptionsSheet(
+            onClose = { optionsOpen = false },
+            onPickFile = { optionsOpen = false; pickLocalFile() },
+            onUrlDialog = { optionsOpen = false; urlDialogOpen = true },
+            onCopy = { optionsOpen = false; copyRoomCode(context, roomCode) },
+            onShare = { optionsOpen = false; shareRoomCode(context, roomCode) },
+            isHost = vm.isHost,
+            locked = false,
+            onLock = { locked -> vm.lock(locked); optionsOpen = false },
+            onLeave = { optionsOpen = false; vm.disconnect(); nav.popBackStack() }
+        )
+    }
+
+    // ---------- دیالوگ لینک ویدیو ----------
+    if (urlDialogOpen) {
+        ChangeVideoDialog(
+            onClose = { urlDialogOpen = false },
+            onConfirm = { url ->
+                urlDialogOpen = false
+                player.setMediaItem(MediaItem.fromUri(url))
+                player.prepare()
+                player.playWhenReady = true
+                vm.changeVideo(url)
+            }
+        )
+    }
+
+    // ---------- اخراج ----------
     if (vm.kickedOut) {
         AlertDialog(
             onDismissRequest = {},
             shape = RoundedCornerShape(24.dp),
             containerColor = BrandCard,
-            title = { Text("از اتاق اخراج شدی", textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text = { Text("مدیر اتاق تو را اخراج کرد.", color = BrandTextMuted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            title = { Text("از اتاق اخراج شدی", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text = { Text("مدیر اتاق تو را اخراج کرد.", color = BrandTextMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             confirmButton = {
                 GradientButton("باشه", onClick = { nav.popBackStack() }, modifier = Modifier.fillMaxWidth())
             }
@@ -328,7 +336,350 @@ fun RoomScreen(
     }
 }
 
-// ---------- انیمیشن واکنش (Emoji Blast) ----------
+// ============================================================
+//  نوار بالای اتاق
+// ============================================================
+@Composable
+private fun RoomTopBar(
+    vm: RoomViewModel,
+    roomCode: String,
+    socketState: SocketState,
+    fullscreen: Boolean,
+    onBack: () -> Unit,
+    onFullscreen: () -> Unit,
+    onShare: () -> Unit,
+    onCopy: () -> Unit,
+    onOptions: () -> Unit,
+    onMembers: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBack) { Icon(Icons.Default.ArrowForward, "خروج", tint = BrandTextMuted) }
+        Column(Modifier.weight(1f)) {
+            Text(
+                vm.roomName.ifBlank { "اتاق $roomCode" },
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("کد: $roomCode", fontSize = 11.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                when (socketState) {
+                    is SocketState.Connected -> StatusBar("متصل", BrandGreen)
+                    is SocketState.Connecting -> StatusBar("در حال اتصال…", BrandAmber)
+                    else -> StatusBar("قطع", BrandDanger)
+                }
+            }
+        }
+        IconButton(onClick = onCopy) { Icon(Icons.Default.ContentCopy, "کپی کد", tint = BrandTextMuted, modifier = Modifier.size(19.dp)) }
+        IconButton(onClick = onShare) { Icon(Icons.Default.Share, "دعوت", tint = BrandTextMuted, modifier = Modifier.size(19.dp)) }
+        IconButton(onClick = onMembers) { Icon(Icons.Default.People, "اعضا", tint = BrandText, modifier = Modifier.size(20.dp)) }
+        IconButton(onClick = onFullscreen) {
+            Icon(
+                if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                "تمام‌صفحه",
+                tint = BrandText,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        IconButton(onClick = onOptions) { Icon(Icons.Default.MoreVert, "بیشتر", tint = BrandText, modifier = Modifier.size(20.dp)) }
+    }
+}
+
+// ============================================================
+//  بخش ویدیو
+// ============================================================
+@Composable
+private fun VideoSection(
+    player: Player,
+    vm: RoomViewModel,
+    fileInfo: WsFileInfo?,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    onPickFile: () -> Unit,
+    onUrlDialog: () -> Unit,
+    landscape: Boolean
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .then(if (landscape) Modifier.weight(1f) else Modifier.aspectRatio(16f / 9f))
+            .background(Color.Black)
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = true
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // نشانگر فایل محلی در حال پخش
+        fileInfo?.let { fi ->
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    "🎬 ${fi.byUserName.ifBlank { "میزبان" }}: ${fi.name}",
+                    fontSize = 11.sp,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 220.dp)
+                )
+            }
+        }
+
+        // دکمه‌های شناور پایین ویدیو
+        Row(
+            Modifier.align(Alignment.BottomEnd).padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // انتخاب فایل محلی
+            FloatingActionButton(
+                onClick = onPickFile,
+                modifier = Modifier.size(42.dp),
+                containerColor = BrandCyan.copy(alpha = 0.9f),
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.FolderOpen, "فایل محلی", tint = Color(0xFF00333D), modifier = Modifier.size(20.dp))
+            }
+            // تغییر لینک
+            FloatingActionButton(
+                onClick = onUrlDialog,
+                modifier = Modifier.size(42.dp),
+                containerColor = BrandCard.copy(alpha = 0.9f),
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Link, "لینک ویدیو", tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+            // پخش/توقف
+            FloatingActionButton(
+                onClick = onPlayPause,
+                modifier = Modifier.size(46.dp),
+                containerColor = BrandPurple,
+                shape = CircleShape
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        // واکنش‌های لحظه‌ای
+        ReactionBurst(vm)
+    }
+}
+
+// ============================================================
+//  پنل چت (هم در حالت عمودی هم کنار صفحه در افقی)
+// ============================================================
+@Composable
+private fun ChatPanel(
+    messages: List<WsMessage>,
+    typing: Set<String>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    chatText: String,
+    onChatText: (String) -> Unit,
+    onSend: () -> Unit,
+    onTyping: (Boolean) -> Unit,
+    onReaction: (String) -> Unit,
+    myId: String,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    var typingJob by remember { mutableStateOf<Job?>(null) }
+
+    Column(modifier.fillMaxWidth()) {
+        // لیست پیام‌ها
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(messages, key = { it.id }) { m -> MessageRow(m, isMe = m.userId == myId) }
+            if (typing.isNotEmpty()) {
+                item { Text("✍️ ${typing.size} نفر در حال تایپ…", fontSize = 12.sp, color = BrandTextMuted) }
+            }
+        }
+
+        // واکنش‌ها
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            items(Emojis) { e ->
+                Text(
+                    e,
+                    fontSize = 19.sp,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { onReaction(e) }
+                        .padding(5.dp)
+                )
+            }
+        }
+
+        // ورودی
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = chatText,
+                onValueChange = {
+                    onChatText(it)
+                    onTyping(it.isNotBlank())
+                    typingJob?.cancel()
+                    if (it.isNotBlank()) {
+                        typingJob = scope.launch {
+                            delay(2000)
+                            onTyping(false)
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("پیام بنویسید…", color = BrandTextMuted) },
+                shape = RoundedCornerShape(24.dp),
+                maxLines = 2,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BrandCyan,
+                    unfocusedBorderColor = BrandCardLight
+                )
+            )
+            Spacer(Modifier.width(8.dp))
+            FilledIconButton(
+                onClick = { onSend() },
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)
+            ) {
+                Icon(Icons.Default.Send, "ارسال", tint = Color.White)
+            }
+        }
+    }
+}
+
+// ============================================================
+//  شیت آپشن‌های اتاق
+// ============================================================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RoomOptionsSheet(
+    onClose: () -> Unit,
+    onPickFile: () -> Unit,
+    onUrlDialog: () -> Unit,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+    isHost: Boolean,
+    locked: Boolean,
+    onLock: (Boolean) -> Unit,
+    onLeave: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        containerColor = BrandCard,
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
+    ) {
+        Column(Modifier.padding(bottom = 30.dp)) {
+            Text(
+                "گزینه‌های اتاق",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+            )
+            SheetRow(Icons.Default.FolderOpen, "انتخاب فیلم از گوشی", BrandCyan, onPickFile)
+            SheetRow(Icons.Default.Link, "تغییر ویدیو با لینک", BrandPurple, onUrlDialog)
+            SheetRow(Icons.Default.ContentCopy, "کپی کد اتاق", BrandText, onCopy)
+            SheetRow(Icons.Default.Share, "دعوت دوستان", BrandGreen, onShare)
+            if (isHost) {
+                SheetRow(
+                    if (locked) Icons.Default.LockOpen else Icons.Default.Lock,
+                    if (locked) "باز کردن قفل اتاق" else "قفل کردن اتاق",
+                    BrandAmber
+                ) { onLock(!locked) }
+            }
+            HorizontalDivider(color = BrandCardLight, modifier = Modifier.padding(vertical = 6.dp))
+            SheetRow(Icons.Default.ExitToApp, "خروج از اتاق", BrandDanger, onLeave)
+        }
+    }
+}
+
+@Composable
+private fun SheetRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, tint: Color, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(title, fontSize = 14.5.sp, color = BrandText)
+    }
+}
+
+// ============================================================
+//  دیالوگ تغییر ویدیو با لینک
+// ============================================================
+@Composable
+private fun ChangeVideoDialog(onClose: () -> Unit, onConfirm: (String) -> Unit) {
+    var url by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onClose,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = BrandCard,
+        title = { Text("تغییر ویدیو") },
+        text = {
+            Column {
+                HamTextField(
+                    url, { url = it; error = null },
+                    "لینک ویدیو (MP4 / HLS / یوتیوب)",
+                    placeholder = "https://example.com/movie.mp4"
+                )
+                error?.let { Spacer(Modifier.height(6.dp)); Text(it, color = BrandDanger, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = {
+            GradientButton(
+                text = "پخش",
+                onClick = {
+                    val v = url.trim()
+                    if (v.isBlank()) { error = "لینک را وارد کن"; return@GradientButton }
+                    if (!v.startsWith("http")) { error = "فقط لینک‌های http/https"; return@GradientButton }
+                    onConfirm(v)
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onClose) { Text("انصراف", color = BrandTextMuted) }
+        }
+    )
+}
+
+// ============================================================
+//  بقیه کامپوننت‌ها
+// ============================================================
+
 @Composable
 private fun ReactionBurst(vm: RoomViewModel) {
     val scope = rememberCoroutineScope()
@@ -367,7 +718,6 @@ private fun ReactionBurst(vm: RoomViewModel) {
     }
 }
 
-// ---------- چیپ عضو ----------
 @Composable
 private fun PeerChip(p: WsPeer, isMe: Boolean) {
     Row(
@@ -386,18 +736,11 @@ private fun PeerChip(p: WsPeer, isMe: Boolean) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 90.dp)
         )
-        if (p.isHost) {
-            Spacer(Modifier.width(4.dp))
-            Text("👑", fontSize = 12.sp)
-        }
-        if (p.muted) {
-            Spacer(Modifier.width(4.dp))
-            Text("🔇", fontSize = 12.sp)
-        }
+        if (p.isHost) { Spacer(Modifier.width(4.dp)); Text("👑", fontSize = 12.sp) }
+        if (p.muted) { Spacer(Modifier.width(4.dp)); Text("🔇", fontSize = 12.sp) }
     }
 }
 
-// ---------- ردیف پیام ----------
 @Composable
 private fun MessageRow(m: WsMessage, isMe: Boolean) {
     Row(
@@ -418,8 +761,7 @@ private fun MessageRow(m: WsMessage, isMe: Boolean) {
                 Modifier
                     .clip(
                         RoundedCornerShape(
-                            topStart = 14.dp,
-                            topEnd = 14.dp,
+                            topStart = 14.dp, topEnd = 14.dp,
                             bottomStart = if (isMe) 14.dp else 4.dp,
                             bottomEnd = if (isMe) 4.dp else 14.dp
                         )
@@ -428,7 +770,7 @@ private fun MessageRow(m: WsMessage, isMe: Boolean) {
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                Column(Modifier.widthIn(max = 260.dp)) {
+                Column(Modifier.widthIn(max = 240.dp)) {
                     Text(m.userName, fontSize = 11.sp, color = if (isMe) Color.White.copy(0.85f) else BrandCyan, fontWeight = FontWeight.Bold)
                     Text(m.text, fontSize = 14.sp, color = if (isMe) Color.White else BrandText)
                 }
@@ -443,7 +785,6 @@ private fun MessageRow(m: WsMessage, isMe: Boolean) {
     }
 }
 
-// ---------- دیالوگ اعضا + کنترل میزبان ----------
 @Composable
 private fun MembersDialog(
     peers: List<WsPeer>,
@@ -469,7 +810,11 @@ private fun MembersDialog(
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(p.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(if (p.isHost) "مدیر اتاق" else if (p.muted) "سکوت شده" else "عضو", fontSize = 11.sp, color = if (p.isHost) BrandAmber else BrandTextMuted)
+                            Text(
+                                if (p.isHost) "مدیر اتاق" else if (p.muted) "سکوت شده" else "عضو",
+                                fontSize = 11.sp,
+                                color = if (p.isHost) BrandAmber else BrandTextMuted
+                            )
                         }
                         if (isHost && p.id != myId) {
                             IconButton(onClick = { onMute(p.id, !p.muted) }) {
@@ -493,3 +838,32 @@ private fun MembersDialog(
         }
     )
 }
+
+// ============================================================
+//  ابزارهای اشتراک و کپی
+// ============================================================
+private fun copyRoomCode(context: Context, code: String) {
+    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    cm.setPrimaryClip(ClipData.newPlainText("room-code", code))
+    android.widget.Toast.makeText(context, "کد اتاق کپی شد: $code", android.widget.Toast.LENGTH_SHORT).show()
+}
+
+private fun shareRoomCode(context: Context, code: String) {
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, "🎬 بیا با هم فیلم ببینیم!\nکد اتاق هم‌فیلم: $code")
+    }
+    context.startActivity(Intent.createChooser(send, "دعوت دوستان"))
+}
+
+private fun Context.queryDisplayName(uri: Uri): String = runCatching {
+    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0) ?: "فایل محلی" else "فایل محلی"
+    }
+}.getOrDefault("فایل محلی")
+
+private fun Context.querySize(uri: Uri): Long = runCatching {
+    contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
+        if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else 0L
+    }
+}.getOrDefault(0L)

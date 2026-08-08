@@ -122,6 +122,19 @@ export class Room {
         break;
       }
 
+      // فایل محلی در حال پخش (از حافظه گوشی) — به همه اعلام می‌شود
+      case 'file': {
+        this.broadcast({
+          type: 'file',
+          name: String(msg.name || '').slice(0, 120),
+          size: msg.size || 0,
+          hash: String(msg.hash || '').slice(0, 64),
+          by: me.id,
+          byName: me.name
+        });
+        break;
+      }
+
       case 'rename': {
         me.name = String(msg.name || me.name).slice(0, 24);
         this.broadcastPeers();
