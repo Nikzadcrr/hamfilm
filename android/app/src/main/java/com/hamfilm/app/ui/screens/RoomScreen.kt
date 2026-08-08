@@ -54,6 +54,8 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
+import com.hamfilm.app.data.ApiConfig
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.ws.*
 import com.hamfilm.app.ui.components.*
@@ -113,10 +115,23 @@ fun RoomScreen(
         }
     }
 
-    // کنترل راه دور → پلیر
-    vm.onRemotePlay = { player.playWhenReady = true }
-    vm.onRemotePause = { player.playWhenReady = false }
-    vm.onRemoteSeek = { time -> if (time > 0) player.seekTo(time) }
+    // کنترل راه دور → پلیر (وضعیت همگام از سرور)
+    vm.onRemoteState = { playing, timeSec, speed ->
+        player.playWhenReady = playing
+        player.setPlaybackSpeed(speed.toFloat().coerceIn(0.25f, 4f))
+        val target = (timeSec * 1000).toLong()
+        // اگر اختلاف با موقعیت فعلی بیش از ۱.۵ ثانیه بود → سیک کن (بدون وقفه بی‌مورد)
+        if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 1500) {
+            player.seekTo(target)
+        }
+    }
+    vm.onRemoteCorrect = { timeSec, playing ->
+        val target = (timeSec * 1000).toLong()
+        if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 2000) {
+            player.seekTo(target)
+        }
+        player.playWhenReady = playing
+    }
     vm.onRemoteVideo = { url ->
         if (url.isNotBlank()) {
             player.setMediaItem(MediaItem.fromUri(url))
@@ -155,7 +170,9 @@ fun RoomScreen(
             player.setMediaItem(MediaItem.fromUri(it))
             player.prepare()
             player.playWhenReady = true
-            vm.shareLocalFile(name, size)
+            // hash محتوای فایل (برای همگام‌سازی) — در پس‌زمینه تا UI لگ نزند
+            val hash = context.queryFileHash(it)
+            vm.shareLocalFile(name, size, hash)
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
@@ -301,7 +318,9 @@ fun RoomScreen(
             onCopy = { optionsOpen = false; copyRoomCode(context, roomCode) },
             onShare = { optionsOpen = false; shareRoomCode(context, roomCode) },
             isHost = vm.isHost,
-            locked = false,
+            locked = vm.roomLocked,
+            speed = vm.playbackSpeed,
+            onSpeed = { rate -> vm.setSpeed(rate) },
             onLock = { locked -> vm.lock(locked); optionsOpen = false },
             onLeave = { optionsOpen = false; vm.disconnect(); nav.popBackStack() }
         )
@@ -433,7 +452,7 @@ private fun VideoSection(
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
-                    "🎬 ${fi.byUserName.ifBlank { "میزبان" }}: ${fi.name}",
+                    "🎬 میزبان: ${fi.name}",
                     fontSize = 11.sp,
                     color = Color.White,
                     maxLines = 1,
@@ -589,6 +608,8 @@ private fun RoomOptionsSheet(
     onShare: () -> Unit,
     isHost: Boolean,
     locked: Boolean,
+    speed: Double,
+    onSpeed: (Double) -> Unit,
     onLock: (Boolean) -> Unit,
     onLeave: () -> Unit
 ) {
@@ -613,6 +634,25 @@ private fun RoomOptionsSheet(
                     if (locked) "باز کردن قفل اتاق" else "قفل کردن اتاق",
                     BrandAmber
                 ) { onLock(!locked) }
+            }
+            // سرعت پخش همگام
+            Text("سرعت پخش", fontSize = 11.sp, color = BrandTextMuted, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(0.5, 0.75, 1.0, 1.25, 1.5, 2.0).forEach { r ->
+                    val active = kotlin.math.abs(speed - r) < 0.01
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (active) BrandGradientSoft else BrandCardLight)
+                            .clickable { onSpeed(r) }
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                    ) {
+                        Text(if (r == 1.0) "۱x" else "${r}x", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) BrandCyan else BrandTextMuted)
+                    }
+                }
             }
             HorizontalDivider(color = BrandCardLight, modifier = Modifier.padding(vertical = 6.dp))
             SheetRow(Icons.Default.ExitToApp, "خروج از اتاق", BrandDanger, onLeave)
@@ -726,7 +766,7 @@ private fun PeerChip(p: WsPeer, isMe: Boolean) {
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(p.avatar, fontSize = 16.sp)
+        AvatarImage(avatarId = p.avatar, size = 24.dp)
         Spacer(Modifier.width(6.dp))
         Text(
             if (isMe) "${p.name} (من)" else p.name,
@@ -735,8 +775,7 @@ private fun PeerChip(p: WsPeer, isMe: Boolean) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 90.dp)
         )
-        if (p.isHost) { Spacer(Modifier.width(4.dp)); Text("👑", fontSize = 12.sp) }
-        if (p.muted) { Spacer(Modifier.width(4.dp)); Text("🔇", fontSize = 12.sp) }
+        if (p.isLeader) { Spacer(Modifier.width(4.dp)); Text("👑", fontSize = 12.sp) }
     }
 }
 
@@ -770,12 +809,19 @@ private fun MessageRow(m: WsMessage, isMe: Boolean) {
                 verticalAlignment = Alignment.Bottom
             ) {
                 Column(Modifier.widthIn(max = 240.dp)) {
-                    Text(m.userName, fontSize = 11.sp, color = if (isMe) Color.White.copy(0.85f) else BrandCyan, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (m.avatar.isNotBlank()) {
+                            AvatarImage(avatarId = m.avatar, size = 14.dp)
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(m.name, fontSize = 11.sp, color = if (isMe) Color.White.copy(0.85f) else BrandCyan, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(2.dp))
                     Text(m.text, fontSize = 14.sp, color = if (isMe) Color.White else BrandText)
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date(m.time)),
+                    java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date(m.ts)),
                     fontSize = 9.sp,
                     color = if (isMe) Color.White.copy(0.6f) else BrandTextMuted
                 )
@@ -805,22 +851,22 @@ private fun MembersDialog(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(BrandCardLight).padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(p.avatar, fontSize = 22.sp)
+                        AvatarImage(avatarId = p.avatar, size = 40.dp)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(p.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text(
-                                if (p.isHost) "مدیر اتاق" else if (p.muted) "سکوت شده" else "عضو",
+                                if (p.isLeader) "مدیر اتاق" else "عضو",
                                 fontSize = 11.sp,
-                                color = if (p.isHost) BrandAmber else BrandTextMuted
+                                color = if (p.isLeader) BrandAmber else BrandTextMuted
                             )
                         }
                         if (isHost && p.id != myId) {
-                            IconButton(onClick = { onMute(p.id, !p.muted) }) {
+                            IconButton(onClick = { onMute(p.id, true) }) {
                                 Icon(
-                                    if (p.muted) Icons.Default.Mic else Icons.Default.MicOff,
+                                    Icons.Default.MicOff,
                                     contentDescription = "سکوت",
-                                    tint = if (p.muted) BrandGreen else BrandTextMuted,
+                                    tint = BrandTextMuted,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -868,3 +914,17 @@ private fun Context.querySize(uri: Uri): Long = runCatching {
     }
     size ?: 0L
 }.getOrDefault(0L)
+
+/** SHA-256 فایل (برای همگام‌سازی فایل محلی با بقیه) */
+private fun Context.queryFileHash(uri: Uri): String = runCatching {
+    val digest = java.security.MessageDigest.getInstance("SHA-256")
+    contentResolver.openInputStream(uri)?.use { input ->
+        val buf = ByteArray(64 * 1024)
+        while (true) {
+            val n = input.read(buf)
+            if (n < 0) break
+            digest.update(buf, 0, n)
+        }
+    }
+    digest.digest().joinToString("") { "%02x".format(it) }
+}.getOrDefault("")

@@ -28,7 +28,7 @@ private val SampleVideos = listOf(
     "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
 )
 
-private val Avatars = listOf("🎬", "🍿", "🎧", "🦊", "🐼", "🚀", "🔥", "😎")
+// آواتارهای تصویری بک‌اند (a1..a10)
 
 @Composable
 fun CreateRoomScreen(nav: NavHostController) {
@@ -36,7 +36,7 @@ fun CreateRoomScreen(nav: NavHostController) {
     var name by remember { mutableStateOf(TokenStore.name.ifBlank { "اتاق من" }) }
     var videoUrl by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var avatar by remember { mutableStateOf(TokenStore.avatar.ifBlank { "🎬" }) }
+    var avatar by remember { mutableStateOf(TokenStore.avatar.ifBlank { "a1" }) }
     var error by remember { mutableStateOf<String?>(null) }
     var creating by remember { mutableStateOf(false) }
     var urlError by remember { mutableStateOf<String?>(null) }
@@ -77,7 +77,7 @@ fun CreateRoomScreen(nav: NavHostController) {
             Spacer(Modifier.height(16.dp))
             Text("آواتارت:", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                items(Avatars) { a ->
+                items(AvatarIds) { a ->
                     Box(
                         Modifier
                             .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
@@ -89,7 +89,7 @@ fun CreateRoomScreen(nav: NavHostController) {
                             )
                             .padding(4.dp)
                     ) {
-                        AvatarChip(emoji = a, size = 44.dp)
+                        AvatarChip(avatarId = a, size = 44.dp)
                     }
                 }
             }
@@ -112,7 +112,8 @@ fun CreateRoomScreen(nav: NavHostController) {
                         when (res) {
                             is RoomViewModel.RoomInfoResult.Success -> {
                                 TokenStore.avatar = avatar
-                                nav.navigate(Routes.room(res.code, res.password, v)) {
+                                // رمز را کاربر خودش وارد کرده — به صفحه اتاق منتقل می‌شود
+                                nav.navigate(Routes.room(res.code, password, v)) {
                                     launchSingleTop = true
                                 }
                             }
@@ -129,10 +130,11 @@ fun CreateRoomScreen(nav: NavHostController) {
 
 @Composable
 fun JoinRoomScreen(nav: NavHostController) {
+    val vm = remember { RoomViewModel() }
     var code by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf(TokenStore.name.ifBlank { "مهمان" }) }
-    var avatar by remember { mutableStateOf(TokenStore.avatar.ifBlank { "🎬" }) }
+    var avatar by remember { mutableStateOf(TokenStore.avatar.ifBlank { "a1" }) }
     var error by remember { mutableStateOf<String?>(null) }
 
     GradientBackground(Modifier.fillMaxSize()) {
@@ -156,18 +158,56 @@ fun JoinRoomScreen(nav: NavHostController) {
             HamTextField(password, { password = it }, "رمز اتاق (اگر دارد)", password = true)
             Spacer(Modifier.height(14.dp))
             HamTextField(name, { name = it }, "نام نمایشی")
+            Spacer(Modifier.height(12.dp))
+            Text("آواتارت:", style = MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+                items(AvatarIds) { a ->
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { avatar = a }
+                            .then(
+                                if (a == avatar)
+                                    Modifier.background(BrandGradientSoft)
+                                else Modifier
+                            )
+                            .padding(4.dp)
+                    ) {
+                        AvatarChip(avatarId = a, size = 44.dp)
+                    }
+                }
+            }
             error?.let {
                 Spacer(Modifier.height(10.dp))
                 Text(it, color = BrandDanger, fontSize = 13.sp)
             }
             Spacer(Modifier.height(20.dp))
-            GradientButton("ورود به اتاق", onClick = {
-                val c = code.trim()
-                if (c.length < 4) { error = "کد اتاق را کامل وارد کن"; return@GradientButton }
-                TokenStore.name = name.ifBlank { "مهمان" }
-                TokenStore.avatar = avatar
-                nav.navigate(Routes.room(c, password)) { launchSingleTop = true }
-            }, modifier = Modifier.fillMaxWidth())
+            GradientButton(
+                text = "ورود به اتاق",
+                loading = checking,
+                onClick = {
+                    val c = code.trim().uppercase()
+                    if (c.length != 6 || !c.all { it.isLetterOrDigit() }) { error = "کد اتاق ۶ کاراکتری است"; return@GradientButton }
+                    error = null
+                    checking = true
+                    vm.checkRoom(c) { res ->
+                        checking = false
+                        when (res) {
+                            is RoomViewModel.RoomInfoResult.Success -> {
+                                if (res.hasPassword && password.isBlank()) {
+                                    error = "این اتاق رمز دارد — رمز را وارد کن"
+                                    return@checkRoom
+                                }
+                                TokenStore.name = name.ifBlank { "مهمان" }
+                                TokenStore.avatar = avatar
+                                nav.navigate(Routes.room(c, password)) { launchSingleTop = true }
+                            }
+                            is RoomViewModel.RoomInfoResult.Error -> error = res.message
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(10.dp))
             TextButton(onClick = { nav.popBackStack() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text("بازگشت", color = BrandTextMuted)

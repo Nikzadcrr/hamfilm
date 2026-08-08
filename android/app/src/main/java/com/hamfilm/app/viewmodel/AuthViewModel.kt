@@ -31,24 +31,23 @@ class AuthViewModel : ViewModel() {
                 } else {
                     me.user?.let {
                         if (it.name.isNotBlank()) TokenStore.name = it.name
-                        if (it.avatar.isNotBlank()) TokenStore.avatar = it.avatar
-                        if (!it.email.isNullOrBlank()) TokenStore.email = it.email
                     }
                 }
             }
         }
     }
 
-    fun login(email: String, password: String, onDone: (Boolean) -> Unit) {
-        if (email.isBlank() || password.isBlank()) {
-            error = "ایمیل و رمز را وارد کنید"
+    /** ورود با نام کاربری (نه ایمیل) — مطابق بک‌اند */
+    fun login(name: String, password: String, onDone: (Boolean) -> Unit) {
+        if (name.isBlank() || password.isBlank()) {
+            error = "نام کاربری و رمز را وارد کنید"
             onDone(false)
             return
         }
         viewModelScope.launch {
             loading = true; error = null
             try {
-                val res = repo.login(email.trim(), password)
+                val res = repo.login(name.trim(), password)
                 saveSession(res)
                 onDone(true)
             } catch (e: Exception) {
@@ -58,16 +57,17 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun register(name: String, email: String, password: String, onDone: (Boolean) -> Unit) {
-        if (name.isBlank() || email.isBlank() || password.length < 4) {
-            error = "نام، ایمیل و رمز (حداقل ۴ کاراکتر) را وارد کنید"
+    /** ثبت‌نام با نام کاربری + رمز (بدون ایمیل) */
+    fun register(name: String, password: String, onDone: (Boolean) -> Unit) {
+        if (name.isBlank() || password.length < 4) {
+            error = "نام کاربری و رمز (حداقل ۴ کاراکتر) را وارد کنید"
             onDone(false)
             return
         }
         viewModelScope.launch {
             loading = true; error = null
             try {
-                val res = repo.register(name.trim(), email.trim(), password)
+                val res = repo.register(name.trim(), password)
                 saveSession(res)
                 onDone(true)
             } catch (e: Exception) {
@@ -81,8 +81,6 @@ class AuthViewModel : ViewModel() {
         TokenStore.token = res.token
         res.user?.let {
             TokenStore.name = it.name.ifBlank { TokenStore.name }
-            if (it.avatar.isNotBlank()) TokenStore.avatar = it.avatar
-            if (!it.email.isNullOrBlank()) TokenStore.email = it.email
         }
         isLoggedIn = true
     }

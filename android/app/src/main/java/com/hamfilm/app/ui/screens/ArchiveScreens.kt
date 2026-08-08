@@ -54,9 +54,10 @@ fun ArchiveScreen(nav: NavHostController) {
     suspend fun load(reset: Boolean) {
         if (reset) { page = 1; hasMore = true }
         val p = if (reset) 1 else page
-        val list = repo.movies(p, selectedGenre, query.ifBlank { null })
+        val res = repo.movies(p, selectedGenre, query.ifBlank { null })
+        val list = res.movies
         movies = if (reset) list else movies + list
-        hasMore = list.isNotEmpty()
+        hasMore = res.page < res.pages
         if (list.isNotEmpty()) page = p + 1
     }
 
@@ -150,7 +151,7 @@ fun ArchiveScreen(nav: NavHostController) {
                             }
                             Spacer(Modifier.height(5.dp))
                             Text(m.displayTitle, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            m.year.takeIf { it > 0 }?.let {
+                            m.year?.takeIf { it > 0 }?.let {
                                 Text("$it", fontSize = 10.sp, color = BrandTextMuted)
                             }
                         }
@@ -305,7 +306,7 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            m.year.takeIf { it > 0 }?.let { InfoBadge("📅 $it", Modifier.weight(1f)) }
+                            m.year?.takeIf { it > 0 }?.let { InfoBadge("📅 $it", Modifier.weight(1f)) }
                             m.country.takeIf { it.isNotBlank() }?.let { InfoBadge("🌍 $it", Modifier.weight(1f)) }
                             m.durationMin?.let { InfoBadge("⏱ ${it} دقیقه", Modifier.weight(1f)) }
                             m.ageRating.takeIf { it.isNotBlank() }?.let { InfoBadge("🔞 $it", Modifier.weight(1f)) }

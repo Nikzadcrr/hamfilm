@@ -103,8 +103,8 @@ fun PlansScreen(nav: NavHostController) {
                                     scope.launch {
                                         try {
                                             val res = repo.checkout(plan.id)
-                                            if (res.paymentUrl.isNotBlank()) {
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(res.paymentUrl)))
+                                            if (res.redirectUrl.isNotBlank()) {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(res.redirectUrl)))
                                             }
                                         } catch (e: Exception) { /* خطا */ }
                                         buying = null
@@ -123,10 +123,10 @@ fun PlansScreen(nav: NavHostController) {
 @Composable
 fun ProfileScreen(nav: NavHostController) {
     val repo = remember { AppRepository() }
-    var sub by remember { mutableStateOf<com.hamfilm.app.data.model.SubscriptionStatus?>(null) }
+    var sub by remember { mutableStateOf<com.hamfilm.app.data.model.SubscriptionInfo?>(null) }
 
     LaunchedEffect(Unit) {
-        sub = if (TokenStore.token.isNotBlank()) repo.mySubscription() else null
+        sub = if (TokenStore.token.isNotBlank()) repo.mySubscription()?.subscription else null
     }
 
     GradientBackground(Modifier.fillMaxSize()) {
@@ -138,13 +138,11 @@ fun ProfileScreen(nav: NavHostController) {
             AvatarChip(TokenStore.avatar, size = 84.dp)
             Spacer(Modifier.height(12.dp))
             Text(TokenStore.name.ifBlank { "مهمان" }, style = MaterialTheme.typography.titleLarge)
-            if (TokenStore.email.isNotBlank()) {
-                Text(TokenStore.email, color = BrandTextMuted, fontSize = 13.sp)
-            }
+
             Spacer(Modifier.height(14.dp))
-            val active = sub?.active == true
+            val active = sub != null && sub!!.endsAt > System.currentTimeMillis()
             StatusBar(
-                if (active) "اشتراک فعال: ${sub?.planName}" else "بدون اشتراک فعال",
+                if (active) "اشتراک فعال تا " + java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale.getDefault()).format(java.util.Date(sub!!.endsAt)) else "بدون اشتراک فعال",
                 if (active) BrandGreen else BrandTextMuted
             )
 

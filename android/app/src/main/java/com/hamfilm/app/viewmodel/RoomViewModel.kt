@@ -6,9 +6,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hamfilm.app.data.TokenStore
-import com.hamfilm.app.data.api.ApiClient
 import com.hamfilm.app.data.api.AppRepository
 import com.hamfilm.app.data.model.CreateRoomRequest
+import com.hamfilm.app.data.model.RoomInfo
 import com.hamfilm.app.data.ws.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,13 +26,15 @@ class RoomViewModel : ViewModel() {
         private set
     var connectionError by mutableStateOf<String?>(null)
     var kickedOut by mutableStateOf(false)
+    var mutedInChat by mutableStateOf(false)
+        private set
 
     val peers = MutableStateFlow<List<WsPeer>>(emptyList())
     val messages = MutableStateFlow<List<WsMessage>>(emptyList())
     val typing = MutableStateFlow<Set<String>>(emptySet())
     val socketState = MutableStateFlow<SocketState>(SocketState.Idle)
 
-    // پخش هم‌زمان
+    // پخش هم‌زمان (منبع حقیقت: سرور)
     var videoUrl by mutableStateOf("")
         private set
     var isPlaying by mutableStateOf(false)
@@ -40,6 +42,12 @@ class RoomViewModel : ViewModel() {
     var positionMs by mutableStateOf(0L)
         private set
     var durationMs by mutableStateOf(0L)
+        private set
+    var playbackSpeed by mutableStateOf(1.0)
+        private set
+    var controlMode by mutableStateOf("host")
+        private set
+    var roomLocked by mutableStateOf(false)
         private set
 
     // واکنش‌های لحظه‌ای
@@ -58,16 +66,33 @@ class RoomViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val room = repo.createRoom(CreateRoomRequest(name, videoUrl, password, avatar))
-                roomCode = room.code
-                onDone(RoomInfoResult.Success(room.code, room.password))
+                roomCode = room.id
+                onDone(RoomInfoResult.Success(room.id, room.hasPassword))
             } catch (e: Exception) {
                 onDone(RoomInfoResult.Error(e.message ?: "خطا"))
             }
         }
     }
 
+    /** چک‌کردن اتاق قبل از ورود (برای رمزدار بودن) */
+    fun checkRoom(code: String, onDone: (RoomInfoResult) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val room = repo.roomInfo(code.uppercase())
+                if (room == null || room.id.isBlank()) {
+                    onDone(RoomInfoResult.Error("اتاق پیدا نشد. کد را چک کنید."))
+                } else {
+                    roomCode = room.id
+                    onDone(RoomInfoResult.Success(room.id, room.hasPassword))
+                }
+            } catch (e: Exception) {
+                onDone(RoomInfoResult.Error(e.message ?: "اتاق پیدا نشد"))
+            }
+        }
+    }
+
     sealed class RoomInfoResult {
-        data class Success(val code: String, val password: String) : RoomInfoResult()
+        data class Success(val code: String, val hasPassword: Boolean) : RoomInfoResult()
         data class Error(val message: String) : RoomInfoResult()
     }
 
@@ -93,29 +118,49 @@ class RoomViewModel : ViewModel() {
         viewModelScope.launch { s.roomInfo.collect { info -> info?.let { roomName = it.optString("name", roomName) } } }
         viewModelScope.launch { s.reactions.collect { reactions.emit(it) } }
         viewModelScope.launch { s.fileInfo.collect { fileInfo.value = it } }
+
+        // وضعیت پخش از سرور
+        viewModelScope.launch {
+            s.playback.collect { p ->
+                isPlaying = p.playing
+                playbackSpeed = p.speed
+                if (p.timeSec > 0) positionMs = (p.timeSec * 1000).toLong()
+                onRemoteState?.invoke(p.playing, p.timeSec, p.speed)
+            }
+        }
+        // اصلاح همگام (وقتی اختلاف زیاد است)
+        viewModelScope.launch {
+            s.correct.collect { c ->
+                positionMs = (c.timeSec * 1000).toLong()
+                onRemoteCorrect?.invoke(c.timeSec, c.playing)
+            }
+        }
+        // تغییر ویدیو
+        viewModelScope.launch {
+            s.videoUrl.collect { url ->
+                if (url.isNotBlank() && url != videoUrl) {
+                    videoUrl = url
+                    localFileName = null
+                    onRemoteVideo?.invoke(url)
+                }
+            }
+        }
+        // قفل / کنترل
+        viewModelScope.launch { s.locked.collect { roomLocked = it } }
+        viewModelScope.launch { s.controlMode.collect { controlMode = it } }
+        // اخراج / سکوت
         viewModelScope.launch {
             s.kicked.collect {
                 kickedOut = true
                 disconnect()
             }
         }
-        // کنترل پخش از سرور
-        viewModelScope.launch {
-            s.control.collect { c ->
-                when (c.mode) {
-                    "play" -> { isPlaying = true; onRemotePlay?.invoke(c.timeMs) }
-                    "pause" -> { isPlaying = false; onRemotePause?.invoke(c.timeMs) }
-                    "seek" -> { onRemoteSeek?.invoke(c.timeMs) }
-                    "video" -> { videoUrl = c.url; isPlaying = true; onRemoteVideo?.invoke(c.url) }
-                }
-            }
-        }
+        viewModelScope.launch { s.muted.collect { mutedInChat = it } }
     }
 
     // کال‌بک‌هایی که پلیر (ExoPlayer) به ViewModel می‌دهد
-    var onRemotePlay: ((Long) -> Unit)? = null
-    var onRemotePause: ((Long) -> Unit)? = null
-    var onRemoteSeek: ((Long) -> Unit)? = null
+    var onRemoteState: ((playing: Boolean, timeSec: Double, speed: Double) -> Unit)? = null
+    var onRemoteCorrect: ((timeSec: Double, playing: Boolean) -> Unit)? = null
     var onRemoteVideo: ((String) -> Unit)? = null
 
     // ---------- اکشن‌های کاربر ----------
@@ -133,27 +178,33 @@ class RoomViewModel : ViewModel() {
         socket?.sendTyping(on)
     }
 
-    fun togglePlay(currentPos: Long) {
+    fun togglePlay(currentPosMs: Long) {
+        if (!canControl) return
         isPlaying = !isPlaying
-        socket?.sendControl(if (isPlaying) "play" else "pause", currentPos)
+        if (isPlaying) socket?.sendPlay(currentPosMs) else socket?.sendPause(currentPosMs)
     }
 
-    fun seekTo(pos: Long) {
-        positionMs = pos
-        socket?.sendControl("seek", pos)
+    fun seekTo(posMs: Long) {
+        positionMs = posMs
+        socket?.sendSeek(posMs)
+    }
+
+    fun setSpeed(rate: Double) {
+        playbackSpeed = rate
+        socket?.sendSpeed(rate)
     }
 
     fun changeVideo(url: String) {
         videoUrl = url
         localFileName = null
-        socket?.sendControl("video", 0L, url)
+        socket?.sendChangeVideo(url)
     }
 
     /** پخش فایل از حافظه گوشی + اعلام به بقیه */
-    fun shareLocalFile(name: String, size: Long) {
+    fun shareLocalFile(name: String, size: Long, hash: String = "") {
         localFileName = name
-        socket?.sendFile(name, size)
-        socket?.sendControl("play", 0L)
+        socket?.sendSetLocalFile(name, size, hash)
+        socket?.sendPlay(0)
     }
 
     fun rename(name: String) {
@@ -163,12 +214,17 @@ class RoomViewModel : ViewModel() {
 
     fun kick(userId: String) = socket?.kick(userId)
     fun mute(userId: String, muted: Boolean) = socket?.mute(userId, muted)
-    fun lock(locked: Boolean) = socket?.lock(locked)
+    fun lock(locked: Boolean) {
+        socket?.lock(locked)
+        roomLocked = locked
+    }
 
     fun updatePosition(pos: Long, dur: Long) {
         positionMs = pos
         durationMs = dur
     }
+
+    val canControl: Boolean get() = isHost || controlMode == "all"
 
     fun disconnect() {
         socket?.disconnect()

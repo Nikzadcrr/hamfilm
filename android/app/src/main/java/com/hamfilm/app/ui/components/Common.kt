@@ -1,5 +1,6 @@
 package com.hamfilm.app.ui.components
 
+import coil.compose.AsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hamfilm.app.data.ApiConfig
 import com.hamfilm.app.ui.theme.*
 
 // ---------- پس‌زمینه گرادیانی ----------
@@ -112,18 +115,39 @@ fun HamTextField(
     )
 }
 
-// ---------- آواتار ایموجی ----------
+// ---------- لیست آواتارهای تصویری (id بک‌اند: a1..a10) ----------
+val AvatarIds = listOf("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10")
+
+/** آدرس تصویر آواتار از id (روی همان بک‌اند) */
+fun avatarUrl(id: String): String = ApiConfig.baseUrl.trimEnd('/') + "/avatars/avatar-" + id.removePrefix("a") + ".jpg"
+
+/** آواتار تصویری گرد — اگر id نبود، ایموجی پیش‌فرض 🎬 */
 @Composable
-fun AvatarChip(emoji: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+fun AvatarImage(avatarId: String, modifier: Modifier = Modifier, size: Dp = 32.dp) {
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(size / 3))
+            .clip(RoundedCornerShape(size / 2))
             .background(BrandGradientSoft),
         contentAlignment = Alignment.Center
     ) {
-        Text(emoji, fontSize = (size.value * 0.5).sp)
+        if (avatarId.isNotBlank() && avatarId in AvatarIds) {
+            AsyncImage(
+                model = avatarUrl(avatarId),
+                contentDescription = "آواتار",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(size).clip(RoundedCornerShape(size / 2))
+            )
+        } else {
+            Text("🎬", fontSize = (size.value * 0.5).sp)
+        }
     }
+}
+
+// ---------- آواتار انتخابی در ساخت/ورود اتاق (گرید) ----------
+@Composable
+fun AvatarChip(avatarId: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+    AvatarImage(avatarId = avatarId, modifier = modifier, size = size)
 }
 
 // ---------- نشانگر وضعیت ----------

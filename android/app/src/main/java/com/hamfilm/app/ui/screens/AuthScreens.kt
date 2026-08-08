@@ -18,7 +18,7 @@ import com.hamfilm.app.viewmodel.AuthViewModel
 @Composable
 fun LoginScreen(nav: NavHostController) {
     val vm = remember { AuthViewModel() }
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     GradientBackground(Modifier.fillMaxSize()) {
@@ -32,7 +32,7 @@ fun LoginScreen(nav: NavHostController) {
             Text("👋", fontSize = 44.sp)
             Text("ورود به هم‌فیلم", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(24.dp))
-            HamTextField(email, { email = it }, "ایمیل", keyboardType = androidx.compose.ui.text.input.KeyboardType.Email)
+            HamTextField(username, { username = it }, "نام کاربری")
             Spacer(Modifier.height(14.dp))
             HamTextField(password, { password = it }, "رمز عبور", password = true)
             vm.error?.let {
@@ -41,7 +41,7 @@ fun LoginScreen(nav: NavHostController) {
             }
             Spacer(Modifier.height(20.dp))
             GradientButton("ورود", loading = vm.loading, onClick = {
-                vm.login(email, password) { ok -> if (ok) nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } }
+                vm.login(username, password) { ok -> if (ok) nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } }
             }, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))
             Row(Modifier.align(Alignment.CenterHorizontally)) {
@@ -61,7 +61,6 @@ fun LoginScreen(nav: NavHostController) {
 fun RegisterScreen(nav: NavHostController) {
     val vm = remember { AuthViewModel() }
     var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     GradientBackground(Modifier.fillMaxSize()) {
@@ -77,8 +76,6 @@ fun RegisterScreen(nav: NavHostController) {
             Spacer(Modifier.height(24.dp))
             HamTextField(name, { name = it }, "نام نمایشی")
             Spacer(Modifier.height(14.dp))
-            HamTextField(email, { email = it }, "ایمیل", keyboardType = androidx.compose.ui.text.input.KeyboardType.Email)
-            Spacer(Modifier.height(14.dp))
             HamTextField(password, { password = it }, "رمز عبور", password = true)
             vm.error?.let {
                 Spacer(Modifier.height(10.dp))
@@ -86,7 +83,7 @@ fun RegisterScreen(nav: NavHostController) {
             }
             Spacer(Modifier.height(20.dp))
             GradientButton("ثبت‌نام", loading = vm.loading, onClick = {
-                vm.register(name, email, password) { ok ->
+                vm.register(name, password) { ok ->
                     if (ok) nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
                 }
             }, modifier = Modifier.fillMaxWidth())

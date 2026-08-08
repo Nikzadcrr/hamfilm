@@ -170,7 +170,8 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
 
     suspend fun load() {
         try {
-            detail = repo.ticketDetail(id)
+            val msgs = repo.ticketMessages(id)
+            detail = detail?.copy(messages = msgs) ?: TicketDetail(id = id, messages = msgs)
         } catch (e: Exception) {
             error = e.message
         }
@@ -198,22 +199,22 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(d.replies, key = { it.id }) { r ->
+                    items(d.messages, key = { it.id }) { r ->
                         Row(Modifier.fillMaxWidth()) {
                             Box(
                                 Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(if (r.author == TokenStore.name) BrandPurple.copy(alpha = 0.25f) else BrandCard)
+                                    .background(if (r.isMine) BrandPurple.copy(alpha = 0.25f) else BrandCard)
                                     .padding(12.dp)
                             ) {
                                 Column {
-                                    Text(r.author, fontSize = 11.sp, color = BrandCyan, fontWeight = FontWeight.Bold)
+                                    Text(if (r.isBot) "🤖 " + r.author else r.author, fontSize = 11.sp, color = if (r.isBot) BrandCyan else BrandTextMuted, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(4.dp))
-                                    Text(r.body, fontSize = 14.sp)
+                                    Text(r.text, fontSize = 14.sp)
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date(r.createdAt)),
+                                        SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date(r.ts)),
                                         fontSize = 10.sp,
                                         color = BrandTextMuted
                                     )
@@ -242,8 +243,9 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
                                 sending = true
                                 scope.launch {
                                     try {
-                                        detail = repo.replyTicket(id, reply.trim())
+                                        repo.replyTicket(id, reply.trim())
                                         reply = ""
+                                        load()
                                     } catch (e: Exception) { /* خطا */ }
                                     sending = false
                                 }
