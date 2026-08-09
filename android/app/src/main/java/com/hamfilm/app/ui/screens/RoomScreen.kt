@@ -632,7 +632,7 @@ fun RoomScreen(
                     unread = unread,
                     peerCount = peers.size,
                     onChat = { chatOpen = true },
-                    
+                    onMembers = { membersOpen = true },
                     onInvite = { shareRoomCode(context, roomCode) },
                     onGuest = { guestDialogOpen = true }
                 )
