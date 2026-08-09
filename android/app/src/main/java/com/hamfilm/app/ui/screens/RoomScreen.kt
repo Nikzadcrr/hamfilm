@@ -556,10 +556,8 @@ fun RoomScreen(
             Column(Modifier.weight(1.5f).fillMaxHeight().statusBarsPadding()) {
                 RoomTopBar(
                     vm = vm, roomCode = roomCode, socketState = socketState,
-                    onShare = { shareRoomCode(context, roomCode) },
-                    onCopy = { copyRoomCode(context, roomCode) },
-                    onMembers = { membersOpen = true },
-                    onMenu = { optionsOpen = true }
+                                         onCopy = { copyRoomCode(context, roomCode) },
+                                         onMenu = { optionsOpen = true }
                 )
                 ConnectionBar(socketState)
                 VideoSection(
@@ -634,7 +632,7 @@ fun RoomScreen(
                     unread = unread,
                     peerCount = peers.size,
                     onChat = { chatOpen = true },
-                    onMembers = { membersOpen = true },
+                    
                     onInvite = { shareRoomCode(context, roomCode) },
                     onGuest = { guestDialogOpen = true }
                 )
@@ -665,10 +663,8 @@ fun RoomScreen(
             ) {
                 RoomTopBar(
                     vm = vm, roomCode = roomCode, socketState = socketState,
-                    onShare = { shareRoomCode(context, roomCode) },
-                    onCopy = { copyRoomCode(context, roomCode) },
-                    onMembers = { membersOpen = true },
-                    onMenu = { optionsOpen = true }
+                                         onCopy = { copyRoomCode(context, roomCode) },
+                                         onMenu = { optionsOpen = true }
                 )
                 ConnectionBar(socketState)
             }
