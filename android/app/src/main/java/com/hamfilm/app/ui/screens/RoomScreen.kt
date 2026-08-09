@@ -1613,7 +1613,10 @@ private fun ToolsGrid(
     tools.add((com.hamfilm.app.R.drawable.ic_hf_share to "دعوت دوستان") to onShare)
     tools.add((com.hamfilm.app.R.drawable.ic_hf_users to "اعضای اتاق") to onMembers)
     if (isHost) {
-        tools.add((if (locked) com.hamfilm.app.R.drawable.ic_hf_lock_open else com.hamfilm.app.R.drawable.ic_hf_lock to if (locked) "باز کردن قفل" else "قفل کردن اتاق") to onLock)
+        tools.add(
+            ((if (locked) com.hamfilm.app.R.drawable.ic_hf_lock_open else com.hamfilm.app.R.drawable.ic_hf_lock) to
+                (if (locked) "باز کردن قفل" else "قفل کردن اتاق")) to onLock
+        )
     }
 
     Column(
@@ -2433,14 +2436,6 @@ private fun MembersDialog(
                             )
                         }
                         if (isHost && !isMe) {
-                            IconButton(onClick = { onMute(p.id, true) }) {
-                                Icon(
-                                    painterResource(com.hamfilm.app.R.drawable.ic_hf_mic_off),
-                                    contentDescription = "سکوت",
-                                    tint = BrandTextMuted,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
                             IconButton(onClick = { onKick(p.id); onClose() }) {
                                 Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_delete), "اخراج", tint = BrandDanger, modifier = Modifier.size(18.dp))
                             }
