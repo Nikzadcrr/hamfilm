@@ -2,6 +2,7 @@ package com.hamfilm.app.ui.components
 
 import coil.compose.AsyncImage
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*

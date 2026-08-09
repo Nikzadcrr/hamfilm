@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.R
-import com.hamfilm.app.ui.components.AvatarImage
+import com.hamfilm.app.ui.components.*
 import com.hamfilm.app.ui.components.GlassCard
 import com.hamfilm.app.ui.components.GradientButton
 import com.hamfilm.app.viewmodel.AuthViewModel

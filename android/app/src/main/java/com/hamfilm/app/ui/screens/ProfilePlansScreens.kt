@@ -221,8 +221,6 @@ fun ProfileScreen(nav: NavHostController) {
                 }
             }
 
-            }
-
             Spacer(Modifier.weight(1f))
             if (TokenStore.token.isNotBlank()) {
                 OutlinedButton(
@@ -240,6 +238,7 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(16.dp))
         }
     }
+}
 
 @Composable
 private fun MenuRow(title: String, onClick: () -> Unit) {
