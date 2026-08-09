@@ -68,6 +68,7 @@ import com.hamfilm.app.data.ApiConfig
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.data.ws.*
 import com.hamfilm.app.ui.components.*
+import com.hamfilm.app.ui.navigation.Routes
 import com.hamfilm.app.ui.theme.*
 import com.hamfilm.app.viewmodel.RoomViewModel
 import kotlinx.coroutines.Job
@@ -324,16 +325,6 @@ fun RoomScreen(
     var playerPosMs by remember { mutableStateOf(0L) }
     var playerDurMs by remember { mutableStateOf(0L) }
     var videoHeight by remember { mutableStateOf(0) }
-    var sliderDragging by remember { mutableStateOf(false) }
-    val qualityLabel: String
-        get() = when {
-            videoHeight >= 2160 -> "4K"
-            videoHeight >= 1080 -> "1080p"
-            videoHeight >= 720 -> "720p"
-            videoHeight >= 480 -> "480p"
-            videoHeight > 0 -> "SD"
-            else -> "HD"
-        }
 
     val peers by vm.peers.collectAsState()
     val messages by vm.messages.collectAsState()
@@ -355,10 +346,8 @@ fun RoomScreen(
     LaunchedEffect(player) {
         while (true) {
             kotlinx.coroutines.delay(500)
-            if (!sliderDragging) {
-                if (player.duration > 0) playerDurMs = player.duration
-                if (player.playWhenReady) playerPosMs = player.currentPosition
-            }
+            if (player.duration > 0) playerDurMs = player.duration
+            if (player.playWhenReady) playerPosMs = player.currentPosition
         }
     }
 
@@ -410,8 +399,8 @@ fun RoomScreen(
                 vm.onLocalPlayStateChange(isPlaying)
             }
 
-            override fun onVideoSizeChanged(width: Int, height: Int, unappliedRotationDegrees: Int, pixelWidthHeightRatio: Float) {
-                videoHeight = height
+            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                videoHeight = videoSize.height
             }
 
             // پایان فیلم: پخش را متوقف کن و اگر میزبان/کنترل‌دار هستی به بقیه هم اعلام کن
@@ -467,7 +456,7 @@ fun RoomScreen(
                 onPlayerViewReady = { playerViewRef = it },
                 playerPosMs = playerPosMs,
                 playerDurMs = playerDurMs,
-                qualityLabel = qualityLabel,
+                qualityLabel = qualityLabelFor(videoHeight),
                 showControls = controlsVisible,
                 showRoomName = false,
                 isFullscreen = true,
@@ -597,7 +586,7 @@ fun RoomScreen(
                     onPlayerViewReady = { playerViewRef = it },
                     playerPosMs = playerPosMs,
                     playerDurMs = playerDurMs,
-                    qualityLabel = qualityLabel,
+                    qualityLabel = qualityLabelFor(videoHeight),
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 12.dp)
@@ -647,7 +636,7 @@ fun RoomScreen(
                     onPlayerViewReady = { playerViewRef = it },
                     playerPosMs = playerPosMs,
                     playerDurMs = playerDurMs,
-                    qualityLabel = qualityLabel,
+                    qualityLabel = qualityLabelFor(videoHeight),
                     showRoomName = false,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1392,12 +1381,13 @@ private fun VideoSection(
                     color = Color.White.copy(alpha = 0.85f),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                 )
+                val dragState = remember { mutableStateOf<Long?>(null) }
                 Slider(
-                    value = if (playerDurMs > 0) playerPosMs.toFloat().coerceIn(0f, playerDurMs.toFloat()) else 0f,
-                    onValueChange = { sliderDragging = true; playerPosMs = it.toLong() },
+                    value = if (playerDurMs > 0) (dragState.value ?: playerPosMs).toFloat().coerceIn(0f, playerDurMs.toFloat()) else 0f,
+                    onValueChange = { dragState.value = it.toLong() },
                     onValueChangeFinished = {
-                        sliderDragging = false
-                        onSeekTo(playerPosMs)
+                        onSeekTo(dragState.value ?: playerPosMs)
+                        dragState.value = null
                     },
                     valueRange = 0f..if (playerDurMs > 0) playerDurMs.toFloat() else 1f,
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
@@ -1449,6 +1439,16 @@ private fun VideoSection(
         // واکنش‌های لحظه‌ای (فقط از طرف دیگران)
         ReactionBurst(vm)
     }
+}
+
+/** برچسب کیفیت از ارتفاع ویدیو */
+private fun qualityLabelFor(height: Int): String = when {
+    height >= 2160 -> "4K"
+    height >= 1080 -> "1080p"
+    height >= 720 -> "720p"
+    height >= 480 -> "480p"
+    height > 0 -> "SD"
+    else -> "HD"
 }
 
 /** زمان 00:00 */
