@@ -242,7 +242,8 @@ class RoomViewModel : ViewModel() {
         durationMs = dur
     }
 
-    val canControl: Boolean get() = isHost || controlMode == "all"
+    // همه اعضا کنترل پخش دارند (طبق درخواست کاربر — سینک کامل بین همه)
+    val canControl: Boolean get() = true
 
     /** وضعیت پخش محلی پلیر (برای آیکون درست) — بدون ارسال به سرور */
     fun onLocalPlayStateChange(playing: Boolean) {

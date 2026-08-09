@@ -173,8 +173,9 @@ fun RoomScreen(
             lastStateWasPlaying = playing
             lastStateSpeed = speed
             // فقط وقتی سرور واقعاً جابه‌جا شده (seek یا اختلاف واقعی) → سیک
-            if (target > 0 && kotlin.math.abs(target - expected) > 2000 &&
-                kotlin.math.abs(player.currentPosition - target) > 2000
+            // آستانه ۹۰۰ms — سینک دقیق بدون لرزش
+            if (target > 0 && kotlin.math.abs(target - expected) > 900 &&
+                kotlin.math.abs(player.currentPosition - target) > 900
             ) {
                 player.seekTo(target)
             }
@@ -187,7 +188,7 @@ fun RoomScreen(
             // این اصلاح را نادیده بگیر — در غیر این صورت فیلم بی‌دلیل استپ می‌شود
             val bogusState = timeSec <= 0.0 && !playing && player.playWhenReady && player.currentPosition > 5000
             if (!bogusState) {
-                if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 2000) {
+                if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 1200) {
                     player.seekTo(target)
                 }
                 player.playWhenReady = playing
@@ -348,6 +349,25 @@ fun RoomScreen(
         }
     }
 
+    // ── سینک نرم: هر ۴ ثانیه موقعیت محلی را با تخمین سرور مقایسه کن ──
+    // (اگر کسی عقب/جلو افتاد، بدون نیاز به سرور خودش را اصلاح می‌کند)
+    LaunchedEffect(player) {
+        while (true) {
+            kotlinx.coroutines.delay(4000)
+            if (!player.playWhenReady) continue
+            val now = System.currentTimeMillis()
+            val serverEstimate = if (lastStateAt > 0L && lastStateWasPlaying) {
+                lastStateTime + ((now - lastStateAt) * lastStateSpeed).toLong()
+            } else 0L
+            if (serverEstimate > 0) {
+                val drift = player.currentPosition - serverEstimate
+                if (kotlin.math.abs(drift) > 1200) {
+                    player.seekTo(serverEstimate)
+                }
+            }
+        }
+    }
+
     fun onPlayPause() {
         if (!vm.canControl) {
             android.widget.Toast.makeText(
@@ -460,8 +480,8 @@ fun RoomScreen(
                     Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.52f)
-                        .widthIn(max = 480.dp)
+                        .fillMaxWidth(0.42f)
+                        .widthIn(max = 360.dp)
                         .padding(vertical = 40.dp)
                         .padding(end = 10.dp)
                         .clip(RoundedCornerShape(24.dp))
@@ -540,12 +560,12 @@ fun RoomScreen(
                 }
             }
 
-            // نوتیف پیام‌ها — بالا-راست، همیشه visible
+            // نوتیف پیام‌ها — راست بالا (RTL: TopStart = راست فیزیکی)، همیشه visible
             Box(
                 Modifier
-                    .align(Alignment.TopEnd)
+                    .align(Alignment.TopStart)
                     .statusBarsPadding()
-                    .padding(top = 10.dp, end = 14.dp)
+                    .padding(top = 10.dp, start = 14.dp)
             ) {
                 ChatNotifyStack(messages = messages, myId = vm.myId, onOpenChat = { fsChatOpen = true })
             }
@@ -1625,7 +1645,7 @@ private fun ChatNotifyStack(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp),
-        horizontalAlignment = Alignment.End
+        horizontalAlignment = Alignment.Start
     ) {
         toasts.forEach { m ->
             Row(
