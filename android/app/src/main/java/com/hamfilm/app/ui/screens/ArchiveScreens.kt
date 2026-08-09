@@ -68,7 +68,8 @@ fun ArchiveScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
+                BackGlassButton(onClick = { nav.popBackStack() })
+                Spacer(Modifier.width(10.dp))
                 Text("🎞️ آرشیو فیلم‌ها", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
 
@@ -78,10 +79,16 @@ fun ArchiveScreen(nav: NavHostController) {
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 placeholder = { Text("جستجوی فیلم…", color = BrandTextMuted) },
-                shape = RoundedCornerShape(14.dp),
-                leadingIcon = { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_search), null, tint = BrandTextMuted) },
+                shape = RoundedCornerShape(16.dp),
+                leadingIcon = { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_search), null, tint = BrandCyan) },
                 singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandCyan, unfocusedBorderColor = BrandCardLight)
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BrandCyan.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.04f),
+                    cursorColor = BrandCyan
+                )
             )
 
             // ژانرها
@@ -223,8 +230,8 @@ fun MovieDetailScreen(nav: NavHostController, slug: String) {
                                 )
                             )
                         )
-                        IconButton(onClick = { nav.popBackStack() }, modifier = Modifier.statusBarsPadding()) {
-                            Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = Color.White)
+                        Box(Modifier.statusBarsPadding().padding(start = 10.dp, top = 8.dp)) {
+                            BackGlassButton(onClick = { nav.popBackStack() })
                         }
                     }
                 }

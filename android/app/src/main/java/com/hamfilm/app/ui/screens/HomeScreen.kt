@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -80,8 +81,17 @@ fun HomeScreen(nav: NavHostController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { nav.navigate(Routes.SETTINGS) }) {
-                    Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_settings), "تنظیمات", tint = BrandTextMuted)
+                ScaleTap(onClick = { nav.navigate(Routes.SETTINGS) }) {
+                    Box(
+                        Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(Color.White.copy(alpha = 0.06f))
+                            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(13.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_settings), "تنظیمات", tint = Color.White, modifier = Modifier.size(19.dp))
+                    }
                 }
             }
 
@@ -122,10 +132,16 @@ fun HomeScreen(nav: NavHostController) {
                             Text("حساب کاربری فعال", fontSize = 11.sp, color = BrandGreen)
                         }
                         // خروج
-                        IconButton(onClick = {
-                            authVm.logout()
-                        }) {
-                            Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_logout), "خروج از حساب", tint = BrandDanger, modifier = Modifier.size(20.dp))
+                        ScaleTap(onClick = { authVm.logout() }) {
+                            Box(
+                                Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFEF4444).copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_logout), "خروج از حساب", tint = Color(0xFFFCA5A5), modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                     Spacer(Modifier.height(10.dp))

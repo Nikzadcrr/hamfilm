@@ -314,3 +314,25 @@ fun ScaleTap(
         content()
     }
 }
+
+/** دکمه بازگشت شیشه‌ای — یکدست در کل اپ */
+@Composable
+fun BackGlassButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ScaleTap(onClick = onClick, modifier = modifier) {
+        Box(
+            Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(13.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painterResource(com.hamfilm.app.R.drawable.ic_hf_back),
+                "بازگشت",
+                tint = Color.White,
+                modifier = Modifier.size(19.dp)
+            )
+        }
+    }
+}

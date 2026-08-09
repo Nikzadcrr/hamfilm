@@ -41,7 +41,7 @@ fun SettingsScreen(nav: NavHostController) {
                 .padding(20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
+                BackGlassButton(onClick = { nav.popBackStack() })
                 Text("⚙️ تنظیمات سرور", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
             Spacer(Modifier.height(16.dp))

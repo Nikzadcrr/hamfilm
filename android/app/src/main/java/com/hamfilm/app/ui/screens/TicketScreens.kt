@@ -45,7 +45,7 @@ fun TicketsScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
+                BackGlassButton(onClick = { nav.popBackStack() })
                 Text("🎟️ تیکت‌های من", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
                 if (TokenStore.token.isNotBlank()) {
                     FilledIconButton(onClick = { showNew = true }, colors = IconButtonDefaults.filledIconButtonColors(containerColor = BrandPurple)) {
@@ -189,7 +189,7 @@ fun TicketDetailScreen(nav: NavHostController, id: String) {
         } else {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
+                    BackGlassButton(onClick = { nav.popBackStack() })
                     Text(d.subject, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1)
                     StatusBar(if (d.status == "open") "باز" else "بسته", if (d.status == "open") BrandGreen else BrandTextMuted)
                 }

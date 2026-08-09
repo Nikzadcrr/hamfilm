@@ -3,6 +3,7 @@ package com.hamfilm.app.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,7 +52,7 @@ fun PlansScreen(nav: NavHostController) {
     GradientBackground(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { nav.popBackStack() }) { Icon(painterResource(com.hamfilm.app.R.drawable.ic_hf_arrow_forward), "بازگشت", tint = BrandTextMuted) }
+                BackGlassButton(onClick = { nav.popBackStack() })
                 Text("💎 پلن‌های هم‌فیلم", style = MaterialTheme.typography.headlineSmall, color = BrandText)
             }
             if (loading) {
@@ -139,7 +140,13 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(20.dp))
 
             // ── کارت پروفایل: آواتار + اسم + وضعیت ──
-            GlassCard(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+            ) {
                 Column(
                     Modifier.fillMaxWidth().padding(vertical = 18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -192,7 +199,14 @@ fun ProfileScreen(nav: NavHostController) {
             }
 
             Spacer(Modifier.height(20.dp))
-            GlassCard(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
                 MenuRow("🎟️ تیکت‌های پشتیبانی") { nav.navigate(Routes.TICKETS) }
                 HorizontalDivider(color = BrandCardLight)
                 MenuRow("💎 پلن‌ها و اشتراک") { nav.navigate(Routes.PLANS) }
@@ -205,6 +219,8 @@ fun ProfileScreen(nav: NavHostController) {
                     TokenStore.onboarded = false
                     nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
                 }
+            }
+
             }
 
             Spacer(Modifier.weight(1f))
@@ -224,19 +240,19 @@ fun ProfileScreen(nav: NavHostController) {
             Spacer(Modifier.height(16.dp))
         }
     }
-}
 
 @Composable
 private fun MenuRow(title: String, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, color = BrandText)
-        Text("‹", color = BrandTextMuted, fontSize = 18.sp)
+    ScaleTap(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .padding(vertical = 14.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, color = BrandText)
+            Text("‹", color = BrandTextMuted, fontSize = 18.sp)
+        }
     }
 }
