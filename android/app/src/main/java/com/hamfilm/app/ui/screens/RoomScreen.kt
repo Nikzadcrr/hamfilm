@@ -172,10 +172,10 @@ fun RoomScreen(
             lastStateTime = target
             lastStateWasPlaying = playing
             lastStateSpeed = speed
-            // فقط وقتی سرور واقعاً جابه‌جا شده (seek یا اختلاف واقعی) → سیک
-            // آستانه ۹۰۰ms — سینک دقیق بدون لرزش
-            if (target > 0 && kotlin.math.abs(target - expected) > 900 &&
-                kotlin.math.abs(player.currentPosition - target) > 900
+            // فقط وقتی سرور واقعاً جابه‌جا شده (seek یا اختلاف بزرگ) → سیک.
+            // آستانه ۵ ثانیه: سینکِ دقیقِ ریز باعث لگ/پرش می‌شود — مهم پخش/توقف هماهنگ است
+            if (target > 0 && kotlin.math.abs(target - expected) > 5000 &&
+                kotlin.math.abs(player.currentPosition - target) > 5000
             ) {
                 player.seekTo(target)
             }
@@ -188,7 +188,8 @@ fun RoomScreen(
             // این اصلاح را نادیده بگیر — در غیر این صورت فیلم بی‌دلیل استپ می‌شود
             val bogusState = timeSec <= 0.0 && !playing && player.playWhenReady && player.currentPosition > 5000
             if (!bogusState) {
-                if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 1200) {
+                // فقط اختلاف بزرگ (بیش از ۵ ثانیه) اصلاح شود — جلوگیری از لگ
+                if (target > 0 && kotlin.math.abs(player.currentPosition - target) > 5000) {
                     player.seekTo(target)
                 }
                 player.playWhenReady = playing
@@ -349,24 +350,6 @@ fun RoomScreen(
         }
     }
 
-    // ── سینک نرم: هر ۴ ثانیه موقعیت محلی را با تخمین سرور مقایسه کن ──
-    // (اگر کسی عقب/جلو افتاد، بدون نیاز به سرور خودش را اصلاح می‌کند)
-    LaunchedEffect(player) {
-        while (true) {
-            kotlinx.coroutines.delay(4000)
-            if (!player.playWhenReady) continue
-            val now = System.currentTimeMillis()
-            val serverEstimate = if (lastStateAt > 0L && lastStateWasPlaying) {
-                lastStateTime + ((now - lastStateAt) * lastStateSpeed).toLong()
-            } else 0L
-            if (serverEstimate > 0) {
-                val drift = player.currentPosition - serverEstimate
-                if (kotlin.math.abs(drift) > 1200) {
-                    player.seekTo(serverEstimate)
-                }
-            }
-        }
-    }
 
     fun onPlayPause() {
         if (!vm.canControl) {
@@ -560,12 +543,12 @@ fun RoomScreen(
                 }
             }
 
-            // نوتیف پیام‌ها — راست بالا (RTL: TopStart = راست فیزیکی)، همیشه visible
+            // نوتیف پیام‌ها — راست بالا، زیر دکمه تمام‌صفحه (تا همیشه دیده شود)
             Box(
                 Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
-                    .padding(top = 10.dp, start = 14.dp)
+                    .padding(top = 62.dp, start = 14.dp)
             ) {
                 ChatNotifyStack(messages = messages, myId = vm.myId, onOpenChat = { fsChatOpen = true })
             }
@@ -1628,16 +1611,16 @@ private fun ChatNotifyStack(
     var prevCount by remember { mutableStateOf(0) }
     val context = LocalContext.current
 
-    LaunchedEffect(messages.size) {
-        val prev = prevCount
-        prevCount = messages.size
-        if (prev == 0 || messages.size <= prev) return@LaunchedEffect
+    LaunchedEffect(messages.lastOrNull()?.id ?: "") {
         val last = messages.lastOrNull() ?: return@LaunchedEffect
+        // پیام خودم یا سیستم → نوتیف نمی‌خواهد
         if (last.system || (last.senderId.isNotBlank() && last.senderId == myId)) return@LaunchedEffect
+        if (toasts.any { it.id == last.id }) return@LaunchedEffect
         toasts = (toasts + last).takeLast(3)
         // صدای بلند پیام جدید (مثل نوتیف گوشی)
         playMessageSound(context)
-        kotlinx.coroutines.delay(4000)
+        // حداقل ۳ ثانیه بالای صفحه می‌ماند
+        kotlinx.coroutines.delay(3000)
         toasts = toasts.filterNot { it.id == last.id }
     }
 
