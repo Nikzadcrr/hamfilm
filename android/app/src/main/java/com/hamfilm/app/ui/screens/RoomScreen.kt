@@ -284,7 +284,7 @@ fun RoomScreen(
 
     // ---------- state ها ----------
     var chatText by remember { mutableStateOf("") }
-    var chatOpen by remember { mutableStateOf(!isLandscape) }
+    var chatOpen by remember { mutableStateOf(false) }
     var fsChatOpen by remember { mutableStateOf(false) }
     val unread by vm.unread.collectAsState()
 
@@ -314,17 +314,14 @@ fun RoomScreen(
     var membersOpen by remember { mutableStateOf(false) }
     var optionsOpen by remember { mutableStateOf(false) }
     var urlDialogOpen by remember { mutableStateOf(false) }
-    var speedSheetOpen by remember { mutableStateOf(false) }
     var guestDialogOpen by remember { mutableStateOf(false) }
     var helpDialogOpen by remember { mutableStateOf(false) }
-    var logoutConfirmOpen by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     var typingJob by remember { mutableStateOf<Job?>(null) }
 
-    // وضعیت زنده پلیر برای UI (زمان/مدت/کیفیت)
+    // وضعیت زنده پلیر برای UI (زمان/مدت)
     var playerPosMs by remember { mutableStateOf(0L) }
     var playerDurMs by remember { mutableStateOf(0L) }
-    var videoHeight by remember { mutableStateOf(0) }
 
     val peers by vm.peers.collectAsState()
     val messages by vm.messages.collectAsState()
@@ -399,10 +396,6 @@ fun RoomScreen(
                 vm.onLocalPlayStateChange(isPlaying)
             }
 
-            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
-                videoHeight = videoSize.height
-            }
-
             // پایان فیلم: پخش را متوقف کن و اگر میزبان/کنترل‌دار هستی به بقیه هم اعلام کن
             override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
@@ -452,11 +445,9 @@ fun RoomScreen(
                 onSeekBy = ::onSeekBy,
                 onSeekTo = ::onSeekTo,
                 onFullscreen = { fullscreen = false },
-                onOpenSettings = { playerSettingsOpen = true },
                 onPlayerViewReady = { playerViewRef = it },
                 playerPosMs = playerPosMs,
                 playerDurMs = playerDurMs,
-                qualityLabel = qualityLabelFor(videoHeight),
                 showControls = controlsVisible,
                 showRoomName = false,
                 isFullscreen = true,
@@ -521,9 +512,8 @@ fun RoomScreen(
                 }
             }
 
-            // ── کنترل‌های شناور — با لمس صفحه ظاهر/مخفی می‌شوند ──
-            if (controlsVisible && !fsChatOpen) {
-                // دکمه چت شناور کنار صفحه
+            // ── دکمه چت شناور کنار صفحه — همیشه visible (هرگز ناپدید نمی‌شود) ──
+            if (!fsChatOpen) {
                 Box(
                     Modifier
                         .align(Alignment.CenterEnd)
@@ -569,8 +559,7 @@ fun RoomScreen(
                     onShare = { shareRoomCode(context, roomCode) },
                     onCopy = { copyRoomCode(context, roomCode) },
                     onMembers = { membersOpen = true },
-                    onMenu = { optionsOpen = true },
-                    onSettings = { playerSettingsOpen = true }
+                    onMenu = { optionsOpen = true }
                 )
                 ConnectionBar(socketState)
                 VideoSection(
@@ -582,11 +571,9 @@ fun RoomScreen(
                     onSeekBy = ::onSeekBy,
                     onSeekTo = ::onSeekTo,
                     onFullscreen = { fullscreen = !fullscreen },
-                    onOpenSettings = { playerSettingsOpen = true },
                     onPlayerViewReady = { playerViewRef = it },
                     playerPosMs = playerPosMs,
                     playerDurMs = playerDurMs,
-                    qualityLabel = qualityLabelFor(videoHeight),
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 12.dp)
@@ -632,11 +619,9 @@ fun RoomScreen(
                     onSeekBy = ::onSeekBy,
                     onSeekTo = ::onSeekTo,
                     onFullscreen = { fullscreen = !fullscreen },
-                    onOpenSettings = { playerSettingsOpen = true },
                     onPlayerViewReady = { playerViewRef = it },
                     playerPosMs = playerPosMs,
                     playerDurMs = playerDurMs,
-                    qualityLabel = qualityLabelFor(videoHeight),
                     showRoomName = false,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -651,33 +636,20 @@ fun RoomScreen(
                     onChat = { chatOpen = true },
                     onMembers = { membersOpen = true },
                     onInvite = { shareRoomCode(context, roomCode) },
-                    onGuest = { guestDialogOpen = true },
-                    onSpeed = { speedSheetOpen = true }
+                    onGuest = { guestDialogOpen = true }
                 )
 
                 // ── ۴) ابزارهای اتاق ──
                 SectionTitle("ابزارهای اتاق")
                 ToolsGrid(
                     onPickFile = ::pickLocalFile,
-                    onUrlDialog = { urlDialogOpen = true },
-                    onPlayerSettings = { playerSettingsOpen = true },
-                    onCopy = { copyRoomCode(context, roomCode) },
-                    onShare = { shareRoomCode(context, roomCode) },
-                    onMembers = { membersOpen = true },
-                    isHost = vm.isHost,
-                    locked = vm.roomLocked,
-                    onLock = { vm.lock(!vm.roomLocked) }
+                    onUrlDialog = { urlDialogOpen = true }
                 )
-
-                // ── ۵) سرعت پخش ──
-                SectionTitle("سرعت پخش")
-                SpeedChips(speed = vm.playbackSpeed, onSpeed = { vm.setSpeed(it) })
 
                 // ── ۹) اکشن‌های پایین ──
                 Spacer(Modifier.height(10.dp))
                 BottomActionsRow(
                     onHelp = { helpDialogOpen = true },
-                    onLogout = { logoutConfirmOpen = true },
                     onExit = { leaveConfirmOpen = true }
                 )
                 Spacer(Modifier.height(6.dp))
@@ -696,8 +668,7 @@ fun RoomScreen(
                     onShare = { shareRoomCode(context, roomCode) },
                     onCopy = { copyRoomCode(context, roomCode) },
                     onMembers = { membersOpen = true },
-                    onMenu = { optionsOpen = true },
-                    onSettings = { playerSettingsOpen = true }
+                    onMenu = { optionsOpen = true }
                 )
                 ConnectionBar(socketState)
             }
@@ -734,17 +705,6 @@ fun RoomScreen(
                 )
             }
 
-            // ── ۱۰) ناوبری پایین شناور ──
-            FloatingBottomNav(
-                onSelect = { dest ->
-                    when (dest) {
-                        "archive" -> nav.navigate(Routes.ARCHIVE)
-                        "profile" -> nav.navigate(Routes.PROFILE)
-                        else -> leaveConfirmOpen = true // خانه → تأیید خروج از اتاق
-                    }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
         }
     }
 
@@ -800,34 +760,6 @@ fun RoomScreen(
         )
     }
 
-    // ---------- دیالوگ خروج از حساب ----------
-    if (logoutConfirmOpen) {
-        AlertDialog(
-            onDismissRequest = { logoutConfirmOpen = false },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = BrandCard,
-            title = { Text("خروج از حساب؟", color = BrandText, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            text = { Text("از حساب خارج می‌شوی؟ اتاق را هم ترک می‌کنی.", color = BrandTextMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
-            confirmButton = {
-                GradientButton(
-                    "خروج از حساب",
-                    onClick = {
-                        logoutConfirmOpen = false
-                        vm.disconnect()
-                        TokenStore.clear()
-                        nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { logoutConfirmOpen = false }, modifier = Modifier.fillMaxWidth()) {
-                    Text("انصراف", color = BrandCyan, fontWeight = FontWeight.Bold)
-                }
-            }
-        )
-    }
-
     // ---------- دیالوگ دسترسی مهمان ----------
     if (guestDialogOpen) {
         AlertDialog(
@@ -867,54 +799,6 @@ fun RoomScreen(
                 }
             }
         )
-    }
-
-    // ---------- شیت سرعت پخش (از Quick Action) ----------
-    if (speedSheetOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { speedSheetOpen = false },
-            containerColor = BrandCard,
-            shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(bottom = 30.dp)) {
-                Text(
-                    "سرعت پخش",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = BrandText,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                )
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(0.5, 0.75, 1.0, 1.25, 1.5, 2.0).forEach { r ->
-                        val active = kotlin.math.abs(vm.playbackSpeed - r) < 0.01
-                        ScaleTap(onClick = { vm.setSpeed(r); speedSheetOpen = false }) {
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(11.dp))
-                                    .then(
-                                        if (active) Modifier
-                                            .background(Brush.linearGradient(listOf(BrandPurple.copy(alpha = 0.75f), BrandCyan.copy(alpha = 0.55f))))
-                                            .border(1.dp, BrandCyan.copy(alpha = 0.6f), RoundedCornerShape(11.dp))
-                                        else Modifier
-                                            .background(Color.White.copy(alpha = 0.05f))
-                                            .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(11.dp))
-                                    )
-                                    .padding(horizontal = 13.dp, vertical = 9.dp)
-                            ) {
-                                Text(
-                                    if (r == 1.0) "1x" else "${r}x",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (active) Color.White else BrandTextMuted
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // ---------- دیالوگ تأیید خروج از اتاق ----------
@@ -1058,11 +942,8 @@ private fun RoomTopBar(
     vm: RoomViewModel,
     roomCode: String,
     socketState: SocketState,
-    onShare: () -> Unit,
     onCopy: () -> Unit,
-    onMembers: () -> Unit,
-    onMenu: () -> Unit,
-    onSettings: () -> Unit
+    onMenu: () -> Unit
 ) {
     val peers by vm.peers.collectAsState()
     val locked = vm.roomLocked
@@ -1077,15 +958,6 @@ private fun RoomTopBar(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // ── سمت راست (شروع RTL): دکمه تنظیمات شیشه‌ای کوچک ──
-            GlassIconButton(
-                iconRes = com.hamfilm.app.R.drawable.ic_hf_settings,
-                contentDescription = "تنظیمات پلیر",
-                tint = Color(0xFFBFDBFE),
-                onClick = onSettings
-            )
-            Spacer(Modifier.width(8.dp))
-
             // ── مرکز: کارت وضعیت اتاق ──
             Row(
                 Modifier
@@ -1134,14 +1006,7 @@ private fun RoomTopBar(
 
             Spacer(Modifier.width(8.dp))
 
-            // ── سمت چپ (پایان RTL): Share / Lock / Menu — کوچک و شیشه‌ای ──
-            GlassIconButton(
-                iconRes = com.hamfilm.app.R.drawable.ic_hf_share,
-                contentDescription = "دعوت دوستان",
-                tint = BrandCyan,
-                onClick = onShare
-            )
-            Spacer(Modifier.width(6.dp))
+            // ── سمت چپ (پایان RTL): Lock (میزبان) + Menu — کوچک و شیشه‌ای ──
             if (vm.isHost) {
                 GlassIconButton(
                     iconRes = if (locked) com.hamfilm.app.R.drawable.ic_hf_lock else com.hamfilm.app.R.drawable.ic_hf_lock_open,
@@ -1203,11 +1068,9 @@ private fun VideoSection(
     onSeekBy: (Long) -> Unit,
     onSeekTo: (Long) -> Unit,
     onFullscreen: () -> Unit,
-    onOpenSettings: () -> Unit = {},
     onPlayerViewReady: (PlayerView) -> Unit = {},
     playerPosMs: Long,
     playerDurMs: Long,
-    qualityLabel: String = "HD",
     showControls: Boolean = true,
     showRoomName: Boolean = true,
     isFullscreen: Boolean = false,
@@ -1278,16 +1141,6 @@ private fun VideoSection(
                         modifier = Modifier.widthIn(max = 150.dp)
                     )
                 }
-            }
-            // بج کیفیت
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .border(1.dp, BrandCyan.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(qualityLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandCyan)
             }
         }
 
@@ -1405,25 +1258,6 @@ private fun VideoSection(
                     color = Color.White.copy(alpha = 0.85f),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                 )
-                Spacer(Modifier.width(4.dp))
-                ScaleTap(onClick = onOpenSettings) {
-                        Box(
-                            Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(11.dp))
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(11.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painterResource(com.hamfilm.app.R.drawable.ic_hf_settings),
-                                "تنظیمات پلیر",
-                                tint = Color.White.copy(alpha = 0.9f),
-                                modifier = Modifier.size(17.dp)
-                            )
-                        }
-                    }
-                }
             }
 
         // ── پیام «هنوز فیلمی انتخاب نشده» ──
@@ -1440,15 +1274,6 @@ private fun VideoSection(
         ReactionBurst(vm)
     }
 }
-
-/** برچسب کیفیت از ارتفاع ویدیو */
-private fun qualityLabelFor(height: Int): String = when {
-    height >= 2160 -> "4K"
-    height >= 1080 -> "1080p"
-    height >= 720 -> "720p"
-    height >= 480 -> "480p"
-    height > 0 -> "SD"
-    else -> "HD"
 }
 
 /** زمان 00:00 */
@@ -1472,8 +1297,7 @@ private fun QuickActionsRow(
     onChat: () -> Unit,
     onMembers: () -> Unit,
     onInvite: () -> Unit,
-    onGuest: () -> Unit,
-    onSpeed: () -> Unit
+    onGuest: () -> Unit
 ) {
     Row(
         Modifier
@@ -1513,14 +1337,6 @@ private fun QuickActionsRow(
             sub = "دسترسی مهمان",
             tint = Color(0xFFF472B6),
             onClick = onGuest,
-            modifier = Modifier.weight(1f)
-        )
-        QuickActionCard(
-            iconRes = com.hamfilm.app.R.drawable.ic_hf_settings,
-            label = "سرعت",
-            sub = "کنترل سرعت",
-            tint = BrandPurple,
-            onClick = onSpeed,
             modifier = Modifier.weight(1f)
         )
     }
@@ -1596,28 +1412,11 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun ToolsGrid(
     onPickFile: () -> Unit,
-    onUrlDialog: () -> Unit,
-    onPlayerSettings: () -> Unit,
-    onCopy: () -> Unit,
-    onShare: () -> Unit,
-    onMembers: () -> Unit,
-    isHost: Boolean,
-    locked: Boolean,
-    onLock: () -> Unit
+    onUrlDialog: () -> Unit
 ) {
     val tools = mutableListOf<Pair<Pair<Int, String>, () -> Unit>>()
     tools.add((com.hamfilm.app.R.drawable.ic_hf_folder to "انتخاب فیلم از گوشی") to onPickFile)
     tools.add((com.hamfilm.app.R.drawable.ic_hf_link to "تغییر ویدیو با لینک") to onUrlDialog)
-    tools.add((com.hamfilm.app.R.drawable.ic_hf_settings to "تنظیمات پلیر") to onPlayerSettings)
-    tools.add((com.hamfilm.app.R.drawable.ic_hf_copy to "کپی کد اتاق") to onCopy)
-    tools.add((com.hamfilm.app.R.drawable.ic_hf_share to "دعوت دوستان") to onShare)
-    tools.add((com.hamfilm.app.R.drawable.ic_hf_users to "اعضای اتاق") to onMembers)
-    if (isHost) {
-        tools.add(
-            ((if (locked) com.hamfilm.app.R.drawable.ic_hf_lock_open else com.hamfilm.app.R.drawable.ic_hf_lock) to
-                (if (locked) "باز کردن قفل" else "قفل کردن اتاق")) to onLock
-        )
-    }
 
     Column(
         Modifier
@@ -1677,52 +1476,11 @@ private fun ToolCell(
     }
 }
 
-// ============================================================
-//  سرعت پخش — چیپ‌های افقی
-// ============================================================
-@Composable
-private fun SpeedChips(speed: Double, onSpeed: (Double) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(0.5, 0.75, 1.0, 1.25, 1.5, 2.0).forEach { r ->
-            val active = kotlin.math.abs(speed - r) < 0.01
-            ScaleTap(onClick = { onSpeed(r) }) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(11.dp))
-                        .then(
-                            if (active) Modifier
-                                .background(Brush.linearGradient(listOf(BrandPurple.copy(alpha = 0.75f), BrandCyan.copy(alpha = 0.55f))))
-                                .border(1.dp, BrandCyan.copy(alpha = 0.6f), RoundedCornerShape(11.dp))
-                            else Modifier
-                                .background(Color.White.copy(alpha = 0.05f))
-                                .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(11.dp))
-                        )
-                        .padding(horizontal = 13.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        if (r == 1.0) "1x" else "${r}x",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (active) Color.White else BrandTextMuted
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ============================================================
 //  اکشن‌های پایین: راهنما | خروج از حساب | خروج از اتاق
 // ============================================================
 @Composable
 private fun BottomActionsRow(
     onHelp: () -> Unit,
-    onLogout: () -> Unit,
     onExit: () -> Unit
 ) {
     Row(
@@ -1731,7 +1489,7 @@ private fun BottomActionsRow(
             .padding(horizontal = 14.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // راهنما — خنثی/آبی
+        // راهنما — آبی/خنثی
         ScaleTap(onClick = onHelp, modifier = Modifier.weight(1f)) {
             Box(
                 Modifier
@@ -1743,20 +1501,6 @@ private fun BottomActionsRow(
                 contentAlignment = Alignment.Center
             ) {
                 Text("راهنما", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF93C5FD))
-            }
-        }
-        // خروج از حساب — خنثی
-        ScaleTap(onClick = onLogout, modifier = Modifier.weight(1f)) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("خروج از حساب", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = BrandText)
             }
         }
         // خروج از اتاق — قرمز (خطرناک)
@@ -1776,66 +1520,6 @@ private fun BottomActionsRow(
     }
 }
 
-// ============================================================
-//  ناوبری پایین شناور — Glassmorphism Pill
-// ============================================================
-@Composable
-private fun FloatingBottomNav(
-    onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier
-            .navigationBarsPadding()
-            .padding(bottom = 10.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .background(BrandCard.copy(alpha = 0.92f))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(30.dp))
-            .padding(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        NavItem(iconRes = com.hamfilm.app.R.drawable.ic_hf_folder, label = "تاریخچه", selected = false) { onSelect("archive") }
-        NavItem(iconRes = com.hamfilm.app.R.drawable.ic_hf_play, label = "خانه", selected = true) { onSelect("home") }
-        NavItem(iconRes = com.hamfilm.app.R.drawable.ic_hf_person, label = "پروفایل", selected = false) { onSelect("profile") }
-    }
-}
-
-@Composable
-private fun NavItem(
-    iconRes: Int,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    ScaleTap(onClick = onClick) {
-        Column(
-            Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .then(
-                    if (selected) Modifier.background(Brush.linearGradient(listOf(BrandPurple.copy(alpha = 0.55f), BrandCyan.copy(alpha = 0.35f))))
-                    else Modifier.background(Color.Transparent)
-                )
-                .padding(horizontal = 16.dp, vertical = 7.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                painterResource(iconRes),
-                label,
-                tint = if (selected) Color.White else BrandTextMuted,
-                modifier = Modifier.size(20.dp)
-            )
-            Text(
-                label,
-                fontSize = 9.5.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = if (selected) Color.White else BrandTextMuted
-            )
-        }
-    }
-}
-
-// ============================================================
 //  چت — اورلی شیشه‌ای از پایین (حالت عمودی)
 // ============================================================
 @Composable
@@ -1912,36 +1596,6 @@ private fun ChatOverlay(
                 modifier = Modifier.weight(1f)
             )
         }
-    }
-}
-
-// ============================================================
-//  دکمه با افکت فشردن (Scale 0.96) — Spring نرم
-// ============================================================
-@Composable
-private fun ScaleTap(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "press"
-    )
-    Box(
-        modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
     }
 }
 

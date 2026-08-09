@@ -13,12 +13,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.hamfilm.app.R
 import com.hamfilm.app.data.TokenStore
 import com.hamfilm.app.ui.components.*
 import com.hamfilm.app.ui.navigation.Routes
@@ -49,18 +52,26 @@ fun CreateRoomScreen(nav: NavHostController) {
                 .fillMaxSize()
                 .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            // ── هدر ──
+            // ── هدر: دکمه بازگشت شیشه‌ای + عنوان ──
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(BrandGradientSoft),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🎬", fontSize = 26.sp, color = BrandText)
+                ScaleTap(onClick = { nav.popBackStack() }) {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.06f))
+                            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painterResource(com.hamfilm.app.R.drawable.ic_hf_back),
+                            "بازگشت",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
                 Spacer(Modifier.width(14.dp))
                 Column {
@@ -71,8 +82,15 @@ fun CreateRoomScreen(nav: NavHostController) {
 
             Spacer(Modifier.height(20.dp))
 
-            // ── کارت جزئیات اتاق ──
-            GlassCard(Modifier.fillMaxWidth()) {
+            // ── کارت جزئیات اتاق — شیشه‌ای با border ظریف ──
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+                    .padding(16.dp)
+            ) {
                 Text("جزئیات اتاق", fontWeight = FontWeight.Black, fontSize = 15.sp, color = BrandText)
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -223,12 +241,33 @@ fun JoinRoomScreen(nav: NavHostController) {
                 .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(4.dp))
+            // دکمه بازگشت شیشه‌ای
+            ScaleTap(onClick = { nav.popBackStack() }, modifier = Modifier.align(Alignment.Start)) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.06f))
+                        .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painterResource(com.hamfilm.app.R.drawable.ic_hf_back),
+                        "بازگشت",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
             Box(
                 Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(BrandGradientSoft),
+                    .background(
+                        Brush.linearGradient(listOf(BrandPurple.copy(alpha = 0.35f), BrandCyan.copy(alpha = 0.25f)))
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Text("🔑", fontSize = 30.sp, color = BrandText)
@@ -238,7 +277,14 @@ fun JoinRoomScreen(nav: NavHostController) {
             Text("کد ۶ رقمی یا لینک دعوتی که دوستت فرستاده را وارد کن", fontSize = 12.sp, color = BrandTextMuted, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp))
 
-            GlassCard(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+                    .padding(16.dp)
+            ) {
                 SectionLabel("کد یا لینک دعوت *")
                 HamTextField(
                     code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(8); error = null },
@@ -307,9 +353,6 @@ fun JoinRoomScreen(nav: NavHostController) {
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(10.dp))
-            TextButton(onClick = { nav.popBackStack() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("بازگشت", color = BrandTextMuted)
-            }
             Spacer(Modifier.height(24.dp))
         }
     }
